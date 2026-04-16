@@ -1,0 +1,180 @@
+% ============================================================
+%  07_pruebas.tex
+% ============================================================
+\chapter{Pruebas y Resultados}
+
+% ── 7.1 ──────────────────────────────────────────────────
+\section{Plan de Pruebas}
+
+Se efectuaron evaluaciones funcionales, de usabilidad y de integración con el
+propósito de verificar el cumplimiento de los requisitos, analizar la facilidad de
+uso y garantizar la estabilidad del sistema en condiciones reales de operación.
+
+\subsection{Tipos de Pruebas Aplicadas}
+
+\begin{itemize}[leftmargin=1.5em]
+  \item \textbf{Pruebas funcionales:} Verificación de que cada módulo responde
+        conforme a los requisitos funcionales (RF-01 a RF-12).
+  \item \textbf{Pruebas de navegación:} Análisis de la coherencia de los flujos
+        de pantalla, menús y transiciones entre roles.
+  \item \textbf{Pruebas de integración:} Validación de la comunicación entre
+        el cliente React Native y los servicios de Supabase (REST, RPC,
+        Realtime, Storage).
+  \item \textbf{Pruebas Realtime:} Verificación de la latencia de notificaciones
+        en el canal \texttt{orders} y \texttt{table\_calls} bajo condiciones de
+        red móvil.
+  \item \textbf{Pruebas de seguridad / RLS:} Intentos de acceso cruzado entre
+        roles para validar que las políticas RLS bloqueen correctamente.
+  \item \textbf{Pruebas exploratorias:} Recorrido libre de la aplicación por
+        evaluadores externos para detectar comportamientos inesperados.
+  \item \textbf{Pruebas de UX/UI:} Evaluación de la experiencia del usuario,
+        priorizando interfaces simples y claras.
+\end{itemize}
+
+\subsection{Escenarios Evaluados}
+
+\begin{enumerate}[leftmargin=1.8em]
+  \item Registro y login de mesero y administrador.
+  \item Creación de un pedido con selección de platillos, mesa y método de pago.
+  \item Actualización del estado de un pedido (\texttt{pending} → \texttt{ready}
+        → \texttt{delivered}) y verificación de notificación en tiempo real.
+  \item Vista de estado de mesas: validar que los cambios de estado aparecen
+        sin recargar la pantalla.
+  \item Llamada al mesero desde la sesión de cliente en mesa y recepción de
+        notificación en el dispositivo del mesero.
+  \item Acceso a la carta digital pública (sin login) y validación de que solo
+        aparecen ítems con \texttt{available = true}.
+  \item Gestión del menú por el admin: crear, editar precio, cambiar disponibilidad,
+        subir imagen.
+  \item Registro de gastos operativos y generación de reporte financiero por rango
+        de fechas.
+  \item Consulta del ranking de platos más vendidos (RPC \texttt{get\_top\_items}).
+  \item Confirmación de pago QR por el admin y verificación de contabilización
+        en el reporte.
+  \item Intento de acceso cruzado: mesero intentando acceder a reportes
+        (debe ser bloqueado por RLS).
+  \item Simulación de pérdida de conexión y reconexión automática del canal
+        Realtime.
+\end{enumerate}
+
+\subsection{Herramientas de Soporte}
+
+\begin{itemize}[leftmargin=1.5em]
+  \item \textbf{Emuladores Android (Android Studio):} Pruebas preliminares de
+        compatibilidad y funcionalidad básica.
+  \item \textbf{Dispositivos físicos Android:} Validaciones de rendimiento y
+        experiencia real del usuario final.
+  \item \textbf{Expo Go / EAS Build:} Distribución de builds de prueba al equipo.
+  \item \textbf{Supabase Dashboard:} Inspección directa de la base de datos y
+        logs de RLS para verificar políticas.
+  \item \textbf{Postman:} Pruebas directas de funciones RPC y endpoints REST.
+\end{itemize}
+
+\subsection{Condiciones de Aprobación}
+
+Una prueba se considera superada cuando:
+\begin{itemize}[leftmargin=1.5em]
+  \item Las funcionalidades operan conforme a los requisitos funcionales
+        y criterios de aceptación definidos.
+  \item Las políticas RLS bloquean accesos no autorizados sin excepción.
+  \item Las notificaciones Realtime llegan en menos de 2 segundos en red WiFi.
+  \item La experiencia del usuario es valorada como satisfactoria.
+  \item No se detectan fallos críticos en las pruebas exploratorias.
+\end{itemize}
+
+% ── 7.2 ──────────────────────────────────────────────────
+\section{Resultados Obtenidos}
+
+\subsection{Registro y Gestión de Pedidos}
+
+El flujo de creación de pedidos fue validado exitosamente en dispositivos físicos.
+El mesero puede seleccionar platillos del menú, asignar una mesa y elegir el método
+de pago. El cálculo del total se realiza automáticamente al agregar ítems.
+
+\subsection{Vista de Mesas en Tiempo Real}
+
+La pantalla de estado de mesas del mesero actualizó correctamente los estados
+(\texttt{pending}, \texttt{ready}, \texttt{delivered}) al recibir eventos del canal
+\texttt{orders} de Supabase Realtime, sin necesidad de recargar la pantalla. La
+latencia promedio observada fue inferior a 1.5 segundos en red WiFi.
+
+\subsection{Carta Digital y Sesión de Cliente}
+
+La carta digital pública fue accedida correctamente desde navegadores móviles
+sin descarga de app. La sesión anónima por mesa se inició correctamente al
+escanear el QR de mesa y el cliente pudo llamar al mesero, recibiendo el mesero
+la notificación en tiempo real vía canal \texttt{table\_calls}.
+
+\subsection{Reportes Financieros}
+
+Las funciones RPC \texttt{get\_report} y \texttt{get\_top\_items} devolvieron
+resultados correctos en todas las combinaciones de rango de fechas probadas.
+La validación de rol dentro de la función \texttt{get\_report} bloqueó
+correctamente el acceso cuando se intentó invocar con un token de rol
+\texttt{waiter}.
+
+\subsection{Seguridad RLS}
+
+Todos los intentos de acceso cruzado entre roles fueron bloqueados por las
+políticas RLS. El mesero no pudo leer órdenes de otros meseros ni acceder
+a la tabla \texttt{expenses}. El cliente anónimo solo pudo insertar en
+\texttt{table\_calls} para su propia mesa.
+
+% ── 7.3 ──────────────────────────────────────────────────
+\section{Limitaciones Conocidas}
+
+\subsection{Free Tier de Supabase}
+
+\begin{center}
+\begin{tabular}{ll}
+  \toprule
+  \textbf{Límite} & \textbf{Valor} \\
+  \midrule
+  Base de datos                      & 500 MB \\
+  Storage                            & 1 GB \\
+  Requests mensuales                 & 50,000 \\
+  Conexiones Realtime simultáneas    & 200 \\
+  Inactividad (pausa automática)     & 7 días sin actividad \\
+  \bottomrule
+\end{tabular}
+\end{center}
+
+\begin{alertbox}
+La pausa automática por inactividad es un riesgo operacional real en producción.
+Debe resolverse mediante un ping periódico (ej. \texttt{cron-job.org}) o migración
+al tier Pro (\$25/mes) antes del primer despliegue en un restaurante real.
+\end{alertbox}
+
+\subsection{Limitaciones de Alcance Documentadas}
+
+\begin{itemize}[leftmargin=1.5em]
+  \item La \textbf{reasignación de órdenes} entre meseros no está soportada
+        en tiempo real. Si el admin reasigna una orden, el nuevo mesero no
+        recibe el evento Realtime hasta el próximo ciclo de polling.
+  \item El \textbf{cliente en mesa no puede crear órdenes directamente}.
+        Requeriría un estado \texttt{draft} y un flujo de confirmación por
+        el mesero, fuera del alcance actual.
+  \item El \textbf{pago QR es estático} y su verificación es manual por el
+        admin. No hay integración con pasarelas de pago en este alcance.
+  \item Las \textbf{cancelaciones parciales y devoluciones} no tienen flujo
+        dedicado. Se recomienda implementar en versiones posteriores.
+\end{itemize}
+
+% ── 7.4 ──────────────────────────────────────────────────
+\section{Mejoras Propuestas}
+
+\begin{enumerate}[leftmargin=1.8em]
+  \item \textbf{Pasarela de pagos:} Integrar con una pasarela (ej. Mercado Pago
+        o Stripe) para verificar pagos QR de forma automática.
+  \item \textbf{Dashboard live global:} Implementar una vista de operación en
+        tiempo real para el admin con estado de todas las mesas y meseros
+        (descartada del alcance actual por complejidad).
+  \item \textbf{Cancelaciones parciales:} Añadir flujo para devolver o cancelar
+        ítems individuales de una orden sin cancelar toda la comanda.
+  \item \textbf{Reasignación de órdenes en tiempo real:} Soporte completo de
+        Realtime al reasignar una orden a otro mesero.
+  \item \textbf{Soporte multi-idioma:} Internacionalización de la interfaz
+        para restaurantes con clientes internacionales.
+  \item \textbf{Modo offline básico:} Caché local de las órdenes activas para
+        operar sin conexión y sincronizar al reconectar.
+\end{enumerate}

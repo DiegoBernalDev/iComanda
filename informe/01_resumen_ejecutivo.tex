@@ -1,0 +1,57 @@
+\chapter{Resumen Ejecutivo}
+
+El proyecto \textbf{Gestión de Comandas} consiste en el desarrollo de una aplicación
+móvil integral diseñada para centralizar y gestionar operativamente los pedidos,
+ventas, gastos y reportes financieros de restaurantes pequeños y medianos. La
+plataforma aborda la problemática del registro manual en papel mediante una solución
+tecnológica que permite a meseros y administradores operar en tiempo real desde
+dispositivos Android, complementada con una carta digital pública y un sistema de
+interacción directa del cliente desde su mesa.
+
+\section{Problemática Resuelta}
+
+La aplicación resuelve los principales desafíos identificados en la operación diaria
+de restaurantes:
+
+\begin{itemize}[leftmargin=1.5em]
+  \item \textbf{Errores de cálculo} en el cierre diario de caja por registros manuales.
+  \item \textbf{Dificultad de conciliación} entre ventas registradas e ingresos reales.
+  \item \textbf{Ausencia de visibilidad financiera} en tiempo real para el administrador.
+  \item \textbf{Procesos lentos} de verificación al final de cada turno.
+  \item \textbf{Falta de trazabilidad} del estado de cada mesa durante el servicio.
+  \item \textbf{Ausencia de un canal directo} entre cliente y mesero sin interrupciones físicas.
+\end{itemize}
+
+\section{Solución Implementada}
+
+Se desarrolló una aplicación móvil nativa para Android con las siguientes
+características principales:
+
+\textbf{Arquitectura Técnica:}
+\begin{itemize}[leftmargin=1.5em]
+  \item \textit{Frontend móvil:} React Native con Expo SDK 52+
+  \item \textit{Web (carta digital + sesión de cliente):} Expo Router (rutas públicas web)
+  \item \textit{BaaS:} Supabase (PostgreSQL + Auth + Storage + Realtime)
+  \item \textit{Lenguaje:} TypeScript
+  \item \textit{Deploy:} Expo EAS Build + EAS Update (OTA)
+\end{itemize}
+
+\textbf{Funcionalidades Clave:}
+\begin{itemize}[leftmargin=1.5em]
+  \item Registro de pedidos con selección de platillos, mesa y método de pago.
+  \item Vista en tiempo real del estado de mesas para el mesero.
+  \item Notificaciones push cuando un pedido pasa a estado \textit{listo}.
+  \item Carta digital pública accesible por QR sin necesidad de app ni registro.
+  \item Sesión anónima del cliente por mesa: ver menú y llamar al mesero.
+  \item Gestión completa del menú (CRUD + imágenes vía Supabase Storage).
+  \item Registro de gastos operativos y generación de reportes financieros.
+  \item Acceso diferenciado por rol: \texttt{waiter}, \texttt{admin}, \texttt{customer}.
+\end{itemize}
+
+\section{Metodología y Gestión}
+
+El proyecto se desarrolló bajo la metodología ágil \textbf{Scrum}, organizado en
+\textbf{3 sprints de 4 semanas} cada uno, con un equipo multidisciplinario de
+5 integrantes que cumplieron roles específicos de desarrollo y gestión. Se utilizaron
+herramientas modernas de colaboración como GitHub, Notion, Discord y Excalidraw
+para garantizar una comunicación efectiva y un control de versiones robusto.
