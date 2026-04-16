@@ -1,0 +1,85 @@
+% ============================================================
+%  08_conclusiones.tex
+% ============================================================
+\chapter{Conclusiones}
+
+El desarrollo del proyecto \textbf{Gestión de Comandas} representa un esfuerzo
+exitoso que logró cumplir con los objetivos planteados, consolidando una plataforma
+integral para la modernización operativa de restaurantes pequeños y medianos. La
+aplicación implementa funcionalidades clave como el registro de pedidos en tiempo
+real, la vista de estado de mesas vía Supabase Realtime, la gestión diferenciada por
+roles con Row Level Security, los reportes financieros calculados server-side mediante
+funciones PostgreSQL, y la carta digital pública accesible sin app desde cualquier
+dispositivo.
+
+Este logro fue posible gracias a la adopción del modelo BaaS con Supabase, que
+permitió eliminar la necesidad de un backend intermedio propio, reduciendo la
+complejidad operacional y el costo de infraestructura. La elección de React Native
+con Expo garantiza actualizaciones OTA sin pasar por las tiendas de aplicaciones,
+lo que es especialmente valioso en un entorno de restaurante donde la continuidad
+del servicio es crítica.
+
+El trabajo en equipo bajo la metodología \textbf{Scrum} demostró ser fundamental
+para el progreso organizado del proyecto, permitiendo una distribución efectiva de
+responsabilidades y una supervisión constante del avance a través de sprints bien
+definidos. La asignación clara de roles, combinada con el uso estratégico de
+herramientas colaborativas como GitHub, Notion y Discord, facilitó la resolución
+de desafíos técnicos y aseguró la entrega de incrementos funcionales en cada
+iteración.
+
+Si bien la plataforma alcanzó sus objetivos principales, algunas funcionalidades
+avanzadas, como la integración con pasarelas de pago, el dashboard live global
+para el administrador y las cancelaciones parciales, representan oportunidades de
+mejora para futuras iteraciones que podrán construirse sobre la base tecnológica
+y funcional sólida establecida en este desarrollo.
+
+% ── 8.1 ──────────────────────────────────────────────────
+\section{Recomendaciones}
+
+\subsection{Futuros Desarrollos}
+
+\begin{itemize}[leftmargin=1.5em]
+  \item \textbf{Integración con pasarelas de pago:} Conectar con Mercado Pago,
+        Stripe u otra pasarela disponible en el mercado local para automatizar
+        la verificación de pagos QR y eliminar la confirmación manual.
+  \item \textbf{Dashboard live global:} Implementar la vista global de operación
+        del restaurante para el admin, mostrando el estado de todas las mesas
+        y meseros en tiempo real.
+  \item \textbf{Cancelaciones parciales y devoluciones:} Añadir un flujo
+        dedicado para devolver o cancelar ítems individuales dentro de una orden.
+  \item \textbf{Modo offline básico:} Implementar caché local de órdenes activas
+        para operar sin conexión y sincronizar al reconectar, usando tecnologías
+        como MMKV o SQLite en el cliente React Native.
+  \item \textbf{Soporte multi-sucursal avanzado:} La tabla \texttt{restaurants}
+        ya habilita multi-sucursal; la siguiente iteración puede añadir un panel
+        de administración por cadena de restaurantes.
+\end{itemize}
+
+\subsection{Optimizaciones Técnicas}
+
+\begin{itemize}[leftmargin=1.5em]
+  \item \textbf{Migración al tier Pro de Supabase:} Eliminar el riesgo de pausa
+        automática por inactividad antes del despliegue en producción real.
+  \item \textbf{Índices adicionales:} Añadir índices compuestos en
+        \texttt{orders(waiter\_id, status)} y
+        \texttt{order\_items(order\_id, menu\_item\_id)} para optimizar
+        las consultas más frecuentes en horas pico.
+  \item \textbf{Pruebas automatizadas:} Incorporar pipelines de CI/CD con suites
+        de testing unitario (Jest), integración y end-to-end (Detox) para reducir
+        la deuda de regresión.
+  \item \textbf{Monitoreo de rendimiento:} Integrar Sentry o similar para
+        captura de errores y métricas de rendimiento en producción.
+\end{itemize}
+
+\subsection{Gestión y Comunicación}
+
+\begin{itemize}[leftmargin=1.5em]
+  \item \textbf{Documentación técnica continua:} Establecer un proceso sistemático
+        para mantener actualizados el esquema de BD, las políticas RLS y las
+        decisiones de arquitectura en el repositorio.
+  \item \textbf{Protocolos de code review:} Definir checklists estandarizados
+        para revisiones de código que aseguren calidad y consistencia.
+  \item \textbf{Capacitación en herramientas:} Realizar sesiones de entrenamiento
+        en el uso avanzado de Supabase (migraciones, funciones RPC, Realtime)
+        para todo el equipo de desarrollo.
+\end{itemize}

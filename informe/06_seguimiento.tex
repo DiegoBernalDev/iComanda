@@ -1,0 +1,298 @@
+\chapter{Seguimiento y Desarrollo Grupal}
+
+\section{Planificación del Trabajo}
+
+\subsection*{Sprint 1 — Fundación: base de datos, autenticación y roles}
+
+\textbf{Objetivo:}  
+Setup del proyecto, schema de BD, autenticación, RLS y CRUD del menú.
+
+\textbf{Historias de Usuario}
+
+\begin{itemize}[leftmargin=1.5em]
+
+\item \textbf{Setup e infraestructura}
+
+\begin{itemize}
+\item HU-01: Inicializar proyecto Expo con TypeScript y Expo Router
+\item HU-02: Configurar proyecto Supabase y variables de entorno
+\item HU-03: Crear migración de esquema inicial de la base de datos
+\item HU-04: Crear constraint de orden activa única por mesa
+\item HU-05: Crear trigger set\_closed\_at al entregar una orden
+\end{itemize}
+
+\item \textbf{Autenticación y roles}
+
+\begin{itemize}
+\item HU-06: Implementar pantalla de login para mesero y admin
+\item HU-07: Proteger rutas según rol con guards de navegación
+\item HU-08: Crear trigger sync\_role\_to\_auth para sincronizar rol
+\item HU-09: Implementar cierre de sesión
+\end{itemize}
+
+\item \textbf{Row Level Security}
+
+\begin{itemize}
+\item HU-10: Implementar RLS para la tabla orders
+\item HU-11: Implementar RLS para expenses, menu\_items y table\_calls
+\end{itemize}
+
+\item \textbf{Gestión de usuarios (admin)}
+
+\begin{itemize}
+\item HU-12: Listar usuarios del sistema (admin)
+\item HU-13: Crear nuevo usuario mesero o admin (admin)
+\item HU-14: Activar y desactivar usuario (admin)
+\end{itemize}
+
+\item \textbf{Gestión de mesas (admin)}
+
+\begin{itemize}
+\item HU-15: CRUD de mesas del restaurante (admin)
+\item HU-16: Gestionar restaurante y su slug (admin)
+\end{itemize}
+
+\end{itemize}
+
+
+\subsection*{Sprint 2 — Operación: menú, pedidos, pagos y gastos}
+
+\textbf{Objetivo:}  
+Registro de pedidos, vista de mesas en tiempo real y módulo financiero.
+
+\textbf{Historias de Usuario}
+
+\begin{itemize}[leftmargin=1.5em]
+
+\item \textbf{Gestión de menú (admin)}
+
+\begin{itemize}
+\item HU-17: Listar ítems del menú con filtro por categoría (admin)
+\item HU-18: Crear ítem del menú con imagen (admin)
+\item HU-19: Editar precio y descripción de un ítem (admin)
+\item HU-20: Activar o desactivar disponibilidad de un ítem (admin)
+\item HU-21: Eliminar ítem del menú (admin)
+\end{itemize}
+
+\item \textbf{Toma de pedidos (mesero)}
+
+\begin{itemize}
+\item HU-22: Ver el menú disponible al tomar un pedido (mesero)
+\item HU-23: Crear una nueva orden seleccionando mesa e ítems (mesero)
+\item HU-24: Ver detalle de una orden activa (mesero)
+\item HU-25: Agregar ítems a una orden existente (mesero)
+\item HU-26: Marcar una orden como entregada (mesero)
+\item HU-27: Cancelar una orden (mesero y admin)
+\item HU-28: Seleccionar método de pago al crear la orden (mesero)
+\end{itemize}
+
+\item \textbf{Pagos (admin)}
+
+\begin{itemize}
+\item HU-29: Ver órdenes con pago QR pendiente de confirmación (admin)
+\item HU-30: Confirmar pago QR de una orden (admin)
+\item HU-31: Mostrar QR estático de pago al cliente (mesero)
+\end{itemize}
+
+\item \textbf{Gastos operativos (admin)}
+
+\begin{itemize}
+\item HU-32: Registrar un gasto operativo (admin)
+\item HU-33: Listar gastos por rango de fechas (admin)
+\item HU-34: Editar y eliminar un gasto (admin)
+\end{itemize}
+
+\end{itemize}
+
+
+\subsection*{Sprint 3 — Tiempo real, carta digital y reportes}
+
+\textbf{Objetivo:}  
+Carta digital pública, sesión de cliente en mesa, pagos y despliegue final.
+
+\textbf{Historias de Usuario}
+
+\begin{itemize}[leftmargin=1.5em]
+
+\item \textbf{Vista de mesas en tiempo real (mesero)}
+
+\begin{itemize}
+\item HU-35: Ver estado de todas las mesas asignadas (mesero)
+\item HU-36: Actualizar estado de mesas en tiempo real sin recargar (mesero)
+\item HU-37: Recibir notificación cuando un pedido está listo (mesero)
+\item HU-38: Manejar reconexión automática del canal Realtime (mesero)
+\end{itemize}
+
+\item \textbf{Llamada al mesero (cliente → mesero)}
+
+\begin{itemize}
+\item HU-39: Mostrar botón "Llamar al mesero" en la sesión de cliente en mesa
+\item HU-40: Recibir notificación de llamada de cliente en tiempo real (mesero)
+\item HU-41: Marcar llamada de cliente como atendida (mesero)
+\end{itemize}
+
+\item \textbf{Carta digital pública (web)}
+
+\begin{itemize}
+\item HU-42: Publicar carta digital accesible por URL sin login
+\item HU-43: Mostrar carta organizada por categorías con imágenes y precios
+\item HU-44: Generar y mostrar QR del restaurante para carta pública (admin)
+\end{itemize}
+
+\item \textbf{Sesión de cliente en mesa (web)}
+
+\begin{itemize}
+\item HU-45: Iniciar sesión anónima al escanear el QR de la mesa
+\item HU-46: Ver menú completo (incluyendo no disponibles) desde la sesión de mesa
+\item HU-47: Generar QR individual por mesa (admin)
+\end{itemize}
+
+\item \textbf{Reportes financieros (admin)}
+
+\begin{itemize}
+\item HU-48: Crear función SQL get\_report para ingresos y egresos
+\item HU-49: Crear función SQL get\_top\_items para ranking de platos
+\item HU-50: Pantalla de reporte financiero por período (admin)
+\item HU-51: Pantalla de ranking de platos más vendidos (admin)
+\end{itemize}
+
+\end{itemize}
+
+\bigskip
+\begin{center}
+\textit{51 historias de usuario · 3 sprints · 6 semanas}
+\end{center}
+
+
+\section{Roles y Responsabilidades}
+
+\begin{center}
+\begin{tabular}{ll}
+  \toprule
+  \textbf{Integrante} & \textbf{Rol} \\
+  \midrule
+  Acebey Zalazar Jimmy Randall & Desarrollador \\
+  Cáceres Véliz Erick Alvaro   & Desarrollador \\
+  Revollo Bernal Amilcar Diego & Scrum Master \\
+  Siles Espicho Adrian Eloy    & Desarrollador  \\
+  Tinta Mamani Jairo Amado     & Desarrollador \\
+  \bottomrule
+\end{tabular}
+\end{center}
+
+
+\section{Control de Versiones}
+
+El proyecto utiliza un sistema de control de versiones distribuido con
+\textbf{Git}, gestionado en un único repositorio alojado en GitHub
+(\texttt{gestion-comandas}). Este enfoque centralizado permite una
+coordinación eficiente entre el desarrollo del frontend móvil, las rutas
+web públicas y las migraciones de base de datos.
+
+La estrategia de ramas adoptada es:
+
+\begin{itemize}[leftmargin=1.5em]
+  \item \textbf{\texttt{main}:} rama de producción; solo recibe merges mediante Pull Requests aprobados.
+  \item \textbf{\texttt{feature/[nombre]}:} una rama por historia de usuario o tarea de sprint.
+\end{itemize}
+
+
+\section{Reporte de Avances}
+
+\subsection{Indicadores de Progreso}
+
+\begin{longtable}{>{\bfseries}p{2cm} p{9cm} c}
+  \toprule
+  \textbf{ID} & \textbf{Historia de Usuario} & \textbf{Completada} \\
+  \midrule
+  \endhead
+
+  HU-01 & Inicializar proyecto Expo con TypeScript y Expo Router & \checkmark \\
+  HU-02 & Configurar proyecto Supabase y variables de entorno & \checkmark \\
+  HU-03 & Crear migración de esquema inicial de la base de datos & \checkmark \\
+  HU-04 & Crear constraint de orden activa única por mesa & \checkmark \\
+  HU-05 & Crear trigger set\_closed\_at al entregar una orden & \checkmark \\
+  HU-06 & Implementar pantalla de login para mesero y admin & \checkmark \\
+  HU-07 & Proteger rutas según rol con guards de navegación & \checkmark \\
+  HU-08 & Crear trigger sync\_role\_to\_auth para sincronizar rol & \checkmark \\
+  HU-09 & Implementar cierre de sesión & \checkmark \\
+  HU-10 & Implementar RLS para la tabla orders & \checkmark \\
+  HU-11 & Implementar RLS para expenses, menu\_items y table\_calls & \checkmark \\
+  HU-12 & Listar usuarios del sistema (admin) & \checkmark \\
+  HU-13 & Crear nuevo usuario mesero o admin (admin) & \checkmark \\
+  HU-14 & Activar y desactivar usuario (admin) & \checkmark \\
+  HU-15 & CRUD de mesas del restaurante (admin) & \checkmark \\
+  HU-16 & Gestionar restaurante y su slug (admin) & \checkmark \\
+  HU-17 & Listar ítems del menú con filtro por categoría (admin) & \checkmark \\
+  HU-18 & Crear ítem del menú con imagen (admin) & \checkmark \\
+  HU-19 & Editar precio y descripción de un ítem (admin) & \checkmark \\
+  HU-20 & Activar o desactivar disponibilidad de un ítem (admin) & \checkmark \\
+  HU-21 & Eliminar ítem del menú (admin) & \checkmark \\
+  HU-22 & Ver el menú disponible al tomar un pedido (mesero) & \checkmark \\
+  HU-23 & Crear una nueva orden seleccionando mesa e ítems (mesero) & \checkmark \\
+  HU-24 & Ver detalle de una orden activa (mesero) & \checkmark \\
+  HU-25 & Agregar ítems a una orden existente (mesero) & \checkmark \\
+  HU-26 & Marcar una orden como entregada (mesero) & \checkmark \\
+  HU-27 & Cancelar una orden (mesero y admin) & \checkmark \\
+  HU-28 & Seleccionar método de pago al crear la orden (mesero) & \checkmark \\
+  HU-29 & Ver órdenes con pago QR pendiente de confirmación (admin) & \checkmark \\
+  HU-30 & Confirmar pago QR de una orden (admin) & \checkmark \\
+  HU-31 & Mostrar QR estático de pago al cliente (mesero) & \checkmark \\
+  HU-32 & Registrar un gasto operativo (admin) & \checkmark \\
+  HU-33 & Listar gastos por rango de fechas (admin) & \checkmark \\
+  HU-34 & Editar y eliminar un gasto (admin) & \checkmark \\
+  HU-35 & Ver estado de todas las mesas asignadas (mesero) & \checkmark \\
+  HU-36 & Actualizar estado de mesas en tiempo real sin recargar (mesero) & \checkmark \\
+  HU-37 & Recibir notificación cuando un pedido está listo (mesero) & \checkmark \\
+  HU-38 & Manejar reconexión automática del canal Realtime (mesero) & \checkmark \\
+  HU-39 & Mostrar botón "Llamar al mesero" en la sesión de cliente en mesa & \checkmark \\
+  HU-40 & Recibir notificación de llamada de cliente en tiempo real (mesero) & \checkmark \\
+  HU-41 & Marcar llamada de cliente como atendida (mesero) & \checkmark \\
+  HU-42 & Publicar carta digital accesible por URL sin login & \checkmark \\
+  HU-43 & Mostrar carta organizada por categorías con imágenes y precios & \checkmark \\
+  HU-44 & Generar y mostrar QR del restaurante para carta pública (admin) & \checkmark \\
+  HU-45 & Iniciar sesión anónima al escanear el QR de la mesa & \checkmark \\
+  HU-46 & Ver menú completo (incluyendo no disponibles) desde la sesión de mesa & \checkmark \\
+  HU-47 & Generar QR individual por mesa (admin) & \checkmark \\
+  HU-48 & Crear función SQL get\_report para ingresos y egresos & \checkmark \\
+  HU-49 & Crear función SQL get\_top\_items para ranking de platos & \checkmark \\
+  HU-50 & Pantalla de reporte financiero por período (admin) & \checkmark \\
+  HU-51 & Pantalla de ranking de platos más vendidos (admin) & \checkmark \\
+
+  \bottomrule
+  \caption{Indicadores de progreso por historia de usuario}
+\end{longtable}
+
+\subsection{Dificultades Encontradas}
+
+\begin{itemize}[leftmargin=1.5em]
+
+\item \textbf{Pausa automática del free tier de Supabase:}
+La base de datos se pausa tras períodos de inactividad,
+por lo que se implementó un ping periódico para mantener
+activo el servicio durante el desarrollo.
+
+\item \textbf{Reconexión de canales Realtime:}
+Las conexiones móviles inestables pueden interrumpir la
+sincronización en tiempo real. Se implementó manejo de
+eventos \texttt{CHANNEL\_ERROR} y \texttt{TIMED\_OUT}
+con reintento automático.
+
+\item \textbf{Persistencia de precios históricos:}
+Para mantener la consistencia financiera, el precio del
+producto se almacena como snapshot en el momento del pedido,
+evitando inconsistencias cuando el admin modifica el menú.
+
+\end{itemize}
+
+
+\section{Comunicación}
+
+El equipo empleó las siguientes herramientas de comunicación y colaboración:
+
+\begin{itemize}[leftmargin=1.5em]
+  \item \textbf{Notion:} planificación de tareas, backlog y documentación técnica.
+  \item \textbf{GitHub:} control de versiones y revisión de código mediante pull requests.
+  \item \textbf{Discord:} canal principal de comunicación durante el desarrollo.
+  \item \textbf{WhatsApp:} coordinación rápida para decisiones puntuales.
+\end{itemize}

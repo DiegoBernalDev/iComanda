@@ -1,0 +1,67 @@
+\chapter{Metodología Aplicada}
+
+% ── 5.1 ──────────────────────────────────────────────────
+\section{Metodología de Desarrollo}
+
+Para el desarrollo del proyecto se adoptó la metodología ágil \textbf{Scrum},
+dado que permite una alta flexibilidad y adaptación a los cambios, además de
+fomentar una comunicación constante entre los miembros del equipo. Scrum se
+basa en ciclos de trabajo cortos y entregables funcionales (sprints) que
+permiten un seguimiento continuo del progreso.
+
+El proceso de desarrollo sigue las siguientes fases dentro del marco de Scrum:
+
+\begin{itemize}[leftmargin=1.5em]
+  \item \textbf{Product Backlog:} Lista priorizada de los requisitos del
+        proyecto, mantenida y priorizada por el Product Owner.
+  \item \textbf{Sprint Planning:} Antes de cada sprint el equipo selecciona
+        los ítems del backlog a completar y se compromete a entregarlos.
+  \item \textbf{Daily Stand-Up:} Reuniones diarias breves para revisar
+        progreso, detectar bloqueos y ajustar tareas.
+  \item \textbf{Sprint Review:} Al final del sprint se presenta el incremento
+        al Product Owner y partes interesadas.
+  \item \textbf{Sprint Retrospective:} El equipo identifica áreas de mejora
+        en el proceso y aplica ajustes al siguiente sprint.
+\end{itemize}
+
+\section{Ciclo de Vida del Proyecto}
+
+El proyecto se organizó en \textbf{3 sprints de 4 semanas} cada uno:
+
+\begin{longtable}{>{\bfseries}p{1.5cm} p{11.5cm}}
+  \toprule
+  \textbf{Sprint} & \textbf{Alcance} \\
+  \midrule
+  \endhead
+
+  1 & Configuración del proyecto, diseño del schema en Supabase,
+      autenticación, RLS, CRUD del menú e integración con Storage
+      para manejo de imágenes. \\[4pt]
+
+  2 & Registro de pedidos, vista de mesas en tiempo real mediante
+      Realtime, manejo de estados de pedido, módulo de gastos,
+      funciones SQL de reportes y ranking de platos. \\[4pt]
+
+  3 & Carta digital pública por QR, sesión anónima por mesa,
+      llamada al mesero, confirmación de pagos por admin,
+      pruebas finales y despliegue con EAS Build. \\
+
+  \bottomrule
+  \caption{Release Plan — Sprints del proyecto}
+\end{longtable}
+
+\section{Herramientas de Gestión}
+
+\begin{itemize}[leftmargin=1.5em]
+  \item \textbf{Notion:} Gestión del sprint backlog con vista Kanban
+        (Por hacer / En progreso / En revisión / Completado),
+        centralización de documentación técnica y seguimiento de tareas.
+  \item \textbf{GitHub:} Control de versiones distribuido, revisión de código
+        mediante pull requests y entrega de incrementos de forma controlada.
+  \item \textbf{Discord:} Canal principal de comunicación cotidiana,
+        dividido en espacios temáticos (desarrollo, diseño, pruebas).
+  \item \textbf{Excalidraw:} Diagramación colaborativa de esquemas de base de
+        datos, flujos de navegación y arquitectura del sistema.
+  \item \textbf{Postman:} Testing y documentación de llamadas RPC y REST
+        durante el desarrollo e integración.
+\end{itemize}
