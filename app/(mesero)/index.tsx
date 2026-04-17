@@ -1,128 +1,134 @@
-import { View, Text, StyleSheet, ScrollView, TouchableOpacity, Platform } from 'react-native';
+import { View, Text, ScrollView, StyleSheet, Pressable } from 'react-native';
 import { useMemo } from 'react';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
-import { router } from 'expo-router';
-import { useAppTheme } from '@/hooks/use-app-theme';
-import { MOCK_USUARIO_SESION, MOCK_MESAS } from '@/constants/mock';
-
-const totalMesas   = MOCK_MESAS.length;
-const mesasActivas = MOCK_MESAS.filter((m) => m.activa).length;
+import { useMD3Theme } from '@/hooks/use-md3-theme';
+import { Card, Chip, FAB } from '@/components/md3';
+import { useAuth } from '@/context/auth';
+import { MOCK_MESAS } from '@/constants/mock';
 
 export default function MeseroHome() {
-  const t = useAppTheme();
-  const s = useMemo(() => makeStyles(t), [t]);
+  const { colors, typography, shape } = useMD3Theme();
+  const s = useMemo(() => makeStyles(colors, shape), [colors, shape]);
+  const { profile, signOut } = useAuth();
+
+  const totalMesas   = MOCK_MESAS.length;
+  const mesasActivas = MOCK_MESAS.filter(m => m.activa).length;
 
   return (
-    <SafeAreaView style={s.safe}>
+    <SafeAreaView style={[s.safe, { backgroundColor: colors.background }]}>
+      {/* Top App Bar manual sin componente para mayor control */}
+      <View style={[s.appBar, { backgroundColor: colors.surface, borderBottomColor: colors.outlineVariant }]}>
+        <View>
+          <Text style={[typography.titleLarge, { color: colors.onSurface }]}>
+            Hola, {profile?.nombre?.split(' ')[0] ?? 'Mesero'}
+          </Text>
+          <Text style={[typography.bodySmall, { color: colors.onSurfaceVariant, textTransform: 'capitalize' }]}>
+            {new Date().toLocaleDateString('es-BO', { weekday: 'long', day: 'numeric', month: 'long' })}
+          </Text>
+        </View>
+        <Pressable onPress={signOut} style={[s.iconBtn, { borderRadius: shape.full }]}
+          android_ripple={{ color: colors.onSurface + '1F', borderless: true, radius: 24 }}>
+          <Ionicons name="log-out-outline" size={24} color={colors.onSurfaceVariant} />
+        </Pressable>
+      </View>
+
       <ScrollView contentContainerStyle={s.scroll} showsVerticalScrollIndicator={false}>
 
-        {/* Header */}
-        <View style={s.header}>
-          <View>
-            <Text style={s.greeting}>Hola, {MOCK_USUARIO_SESION.nombre.split(' ')[0]} 👋</Text>
-            <Text style={s.subGreeting}>
-              Turno activo — {new Date().toLocaleDateString('es-BO', { weekday: 'long', day: 'numeric', month: 'long' })}
-            </Text>
-          </View>
-          <TouchableOpacity style={s.logoutBtn} onPress={() => router.replace('/login')}>
-            <Ionicons name="log-out-outline" size={22} color={t.textTertiary} />
-          </TouchableOpacity>
-        </View>
-
-        {/* Stats */}
+        {/* Stats row */}
         <View style={s.statsRow}>
-          <StatCard t={t} icon="grid-outline"             color={t.brand.primary}  value={totalMesas}   label="Total mesas"  />
-          <StatCard t={t} icon="checkmark-circle-outline" color={t.brand.success}  value={mesasActivas} label="Disponibles" />
-          <StatCard t={t} icon="receipt-outline"          color={t.brand.indigo}   value={0}            label="Pedidos hoy" />
+          <StatCard colors={colors} typography={typography} shape={shape}
+            icon="grid-outline" value={totalMesas} label="Mesas" color={colors.primary} />
+          <StatCard colors={colors} typography={typography} shape={shape}
+            icon="checkmark-circle-outline" value={mesasActivas} label="Libres" color={colors.tertiary} />
+          <StatCard colors={colors} typography={typography} shape={shape}
+            icon="receipt-outline" value={0} label="Pedidos" color={colors.secondary} />
         </View>
 
         {/* Acciones */}
-        <Text style={s.sectionTitle}>Acciones</Text>
+        <Text style={[typography.titleMedium, s.sectionLabel, { color: colors.onSurface }]}>Acciones</Text>
         <View style={s.actionsGrid}>
-          <ActionCard t={t} icon="add-circle-outline"  label="Nuevo pedido" color={t.brand.primary} onPress={() => {}} />
-          <ActionCard t={t} icon="list-outline"        label="Mis pedidos"  color={t.brand.indigo}  onPress={() => {}} />
-          <ActionCard t={t} icon="restaurant-outline"  label="Ver menú"     color={t.brand.success} onPress={() => {}} />
-          <ActionCard t={t} icon="person-outline"      label="Mi perfil"    color={t.brand.warning} onPress={() => {}} />
+          {[
+            { icon: 'add-circle-outline' as const, label: 'Nuevo pedido',  color: colors.primaryContainer,   on: colors.onPrimaryContainer },
+            { icon: 'list-outline'        as const, label: 'Mis pedidos',   color: colors.secondaryContainer, on: colors.onSecondaryContainer },
+            { icon: 'restaurant-outline'  as const, label: 'Ver menú',      color: colors.tertiaryContainer,  on: colors.onTertiaryContainer },
+            { icon: 'person-outline'      as const, label: 'Mi perfil',     color: colors.surfaceVariant,     on: colors.onSurfaceVariant },
+          ].map(a => (
+            <Pressable key={a.label} style={[s.actionCard, { backgroundColor: a.color, borderRadius: shape.large }]}
+              android_ripple={{ color: a.on + '30' }}>
+              <Ionicons name={a.icon} size={28} color={a.on} />
+              <Text style={[typography.labelLarge, { color: a.on, marginTop: 8 }]}>{a.label}</Text>
+            </Pressable>
+          ))}
         </View>
 
         {/* Mesas */}
-        <Text style={s.sectionTitle}>Estado de mesas</Text>
+        <Text style={[typography.titleMedium, s.sectionLabel, { color: colors.onSurface }]}>Estado de mesas</Text>
         <View style={s.mesasGrid}>
-          {MOCK_MESAS.map((mesa) => (
-            <View key={mesa.id} style={[s.mesaCard, !mesa.activa && s.mesaInactiva]}>
-              <Ionicons name="grid-outline" size={22} color={mesa.activa ? t.brand.primary : t.textMuted} />
-              <Text style={[s.mesaNum, !mesa.activa && s.textInactivo]}>Mesa {mesa.numero}</Text>
-              <Text style={[s.mesaCap, !mesa.activa && s.textInactivo]}>{mesa.capacidad} personas</Text>
-              <View style={[s.mesaBadge, mesa.activa ? s.badgeActiva : s.badgeInactiva]}>
-                <Text style={[s.mesaBadgeText, { color: mesa.activa ? t.brand.success : t.textMuted }]}>
-                  {mesa.activa ? 'Libre' : 'Inactiva'}
+          {MOCK_MESAS.map(mesa => (
+            <Card key={mesa.id} variant={mesa.activa ? 'elevated' : 'filled'} style={s.mesaCard}>
+              <View style={[s.mesaTop]}>
+                <View style={[s.mesaIconBg, {
+                  backgroundColor: mesa.activa ? colors.primaryContainer : colors.surfaceVariant,
+                  borderRadius: shape.medium,
+                }]}>
+                  <Ionicons name="grid-outline" size={20}
+                    color={mesa.activa ? colors.onPrimaryContainer : colors.onSurfaceVariant} />
+                </View>
+                <Chip
+                  label={mesa.activa ? 'Libre' : 'Inactiva'}
+                  selected={mesa.activa}
+                  variant="filter"
+                />
+              </View>
+              <Text style={[typography.titleMedium, { color: colors.onSurface, marginTop: 8 }]}>
+                Mesa {mesa.numero}
+              </Text>
+              <View style={s.mesaCapRow}>
+                <Ionicons name="people-outline" size={14} color={colors.onSurfaceVariant} />
+                <Text style={[typography.bodySmall, { color: colors.onSurfaceVariant }]}>
+                  {mesa.capacidad} personas
                 </Text>
               </View>
-            </View>
+            </Card>
           ))}
         </View>
 
       </ScrollView>
+
+      {/* FAB */}
+      <FAB icon="add" onPress={() => {}} style={s.fab} />
     </SafeAreaView>
   );
 }
 
-function StatCard({ t, icon, color, value, label }: { t: ReturnType<typeof useAppTheme>; icon: keyof typeof Ionicons.glyphMap; color: string; value: number; label: string }) {
-  const s = useMemo(() => makeStyles(t), [t]);
+function StatCard({ colors, typography, shape, icon, value, label, color }: any) {
   return (
-    <View style={[s.statCard, { borderColor: color + '55' }]}>
-      <Ionicons name={icon} size={20} color={color} />
-      <Text style={s.statValue}>{value}</Text>
-      <Text style={s.statLabel}>{label}</Text>
+    <View style={[{ flex: 1, backgroundColor: colors.surfaceContainerHigh, borderRadius: shape.medium, padding: 16, alignItems: 'center', gap: 4 }]}>
+      <Ionicons name={icon} size={22} color={color} />
+      <Text style={[typography.headlineSmall, { color: colors.onSurface }]}>{value}</Text>
+      <Text style={[typography.labelMedium, { color: colors.onSurfaceVariant }]}>{label}</Text>
     </View>
   );
 }
 
-function ActionCard({ t, icon, label, color, onPress }: { t: ReturnType<typeof useAppTheme>; icon: keyof typeof Ionicons.glyphMap; label: string; color: string; onPress: () => void }) {
-  const s = useMemo(() => makeStyles(t), [t]);
-  return (
-    <TouchableOpacity style={s.actionCard} onPress={onPress} activeOpacity={0.8}>
-      <View style={[s.actionIcon, { backgroundColor: color + '22' }]}>
-        <Ionicons name={icon} size={26} color={color} />
-      </View>
-      <Text style={s.actionLabel}>{label}</Text>
-    </TouchableOpacity>
-  );
-}
+const makeStyles = (colors: any, shape: any) => StyleSheet.create({
+  safe:    { flex: 1 },
+  appBar:  { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', paddingHorizontal: 16, paddingVertical: 12, borderBottomWidth: StyleSheet.hairlineWidth },
+  iconBtn: { padding: 12 },
+  scroll:  { padding: 16, paddingBottom: 96 },
 
-const makeStyles = (t: ReturnType<typeof useAppTheme>) => StyleSheet.create({
-  safe:   { flex: 1, backgroundColor: t.background },
-  scroll: { padding: 20, paddingBottom: 40 },
+  statsRow:    { flexDirection: 'row', gap: 8, marginBottom: 24 },
+  sectionLabel:{ marginBottom: 12, marginTop: 4 },
 
-  header:      { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: 24 },
-  greeting:    { fontSize: 22, fontWeight: '700', color: t.text },
-  subGreeting: { fontSize: 13, color: t.textMuted, marginTop: 2, textTransform: 'capitalize' },
-  logoutBtn:   { backgroundColor: t.surface, borderRadius: 10, padding: 10, borderWidth: 1, borderColor: t.border },
+  actionsGrid: { flexDirection: 'row', flexWrap: 'wrap', gap: 8, marginBottom: 24 },
+  actionCard:  { width: '47.5%', padding: 20, alignItems: 'flex-start' },
 
-  statsRow: { flexDirection: 'row', gap: 10, marginBottom: 28 },
-  statCard: {
-    flex: 1, backgroundColor: t.surface, borderRadius: 14, padding: 14,
-    alignItems: 'center', gap: 4, borderWidth: 1, ...(t.shadow as object),
-  },
-  statValue: { fontSize: 22, fontWeight: '700', color: t.text },
-  statLabel: { fontSize: 11, color: t.textMuted, textAlign: 'center' },
+  mesasGrid:  { flexDirection: 'row', flexWrap: 'wrap', gap: 8 },
+  mesaCard:   { width: '47.5%', padding: 16 },
+  mesaTop:    { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' },
+  mesaIconBg: { width: 40, height: 40, alignItems: 'center', justifyContent: 'center' },
+  mesaCapRow: { flexDirection: 'row', alignItems: 'center', gap: 4, marginTop: 4 },
 
-  sectionTitle: { fontSize: 16, fontWeight: '600', color: t.textTertiary, marginBottom: 12 },
-
-  actionsGrid: { flexDirection: 'row', flexWrap: 'wrap', gap: 10, marginBottom: 28 },
-  actionCard:  { width: '47.5%', backgroundColor: t.surface, borderRadius: 16, padding: 18, alignItems: 'center', gap: 10, borderWidth: 1, borderColor: t.border },
-  actionIcon:  { width: 52, height: 52, borderRadius: 14, alignItems: 'center', justifyContent: 'center' },
-  actionLabel: { fontSize: 14, fontWeight: '500', color: t.text, textAlign: 'center' },
-
-  mesasGrid:   { flexDirection: 'row', flexWrap: 'wrap', gap: 10 },
-  mesaCard:    { width: '47.5%', backgroundColor: t.surface, borderRadius: 14, padding: 16, alignItems: 'center', gap: 4, borderWidth: 1, borderColor: t.border },
-  mesaInactiva:{ borderColor: t.border, backgroundColor: t.surfaceAlt, opacity: 0.6 },
-  mesaNum:     { fontSize: 15, fontWeight: '600', color: t.text, marginTop: 4 },
-  mesaCap:     { fontSize: 12, color: t.textMuted },
-  textInactivo:{ color: t.textMuted },
-  mesaBadge:   { marginTop: 6, paddingHorizontal: 10, paddingVertical: 3, borderRadius: 20 },
-  badgeActiva: { backgroundColor: t.brand.successFade },
-  badgeInactiva:{ backgroundColor: t.surfaceAlt },
-  mesaBadgeText:{ fontSize: 11, fontWeight: '600' },
+  fab: { position: 'absolute', right: 16, bottom: 24 },
 });

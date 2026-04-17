@@ -1,7 +1,10 @@
 {
   "permissions": {
     "allow": [
-      "Bash(npx skills *)"
+      "Bash(npx skills *)",
+      "Bash(npm install *)",
+      "Bash(curl -s -X POST https://vxvsymlyakezrbaubiap.supabase.co/rest/v1/rpc/get_my_role -H 'Authorization: Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InZ4dnN5bWx5YWtlenJiYXViaWFwIiwicm9sZSI6InNlcnZpY2Vfcm9sZSIsImlhdCI6MTc3NTcyNjk5OCwiZXhwIjoyMDkxMzAyOTk4fQ.Myeaz5U3J0ix0NegVrQooyUmRxSW5SlovaZd6nXIC_w' -H 'apikey: eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InZ4dnN5bWx5YWtlenJiYXViaWFwIiwicm9sZSI6InNlcnZpY2Vfcm9sZSIsImlhdCI6MTc3NTcyNjk5OCwiZXhwIjoyMDkxMzAyOTk4fQ.Myeaz5U3J0ix0NegVrQooyUmRxSW5SlovaZd6nXIC_w' -H 'Content-Type: application/json')",
+      "Bash(curl -s -X POST https://api.supabase.com/v1/projects/vxvsymlyakezrbaubiap/database/query -H 'Authorization: Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InZ4dnN5bWx5YWtlenJiYXViaWFwIiwicm9sZSI6InNlcnZpY2Vfcm9sZSIsImlhdCI6MTc3NTcyNjk5OCwiZXhwIjoyMDkxMzAyOTk4fQ.Myeaz5U3J0ix0NegVrQooyUmRxSW5SlovaZd6nXIC_w' -H 'Content-Type: application/json' -d '{\"query\": \"SELECT 1 as test\"}')"
     ]
   }
 }
