@@ -1,0 +1,7 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(curl -s 'https://vxvsymlyakezrbaubiap.supabase.co/rest/v1/tables?select=id,numero,capacidad&limit=3' -H 'apikey: eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InZ4dnN5bWx5YWtlenJiYXViaWFwIiwicm9sZSI6InNlcnZpY2Vfcm9sZSIsImlhdCI6MTc3NTcyNjk5OCwiZXhwIjoyMDkxMzAyOTk4fQ.Myeaz5U3J0ix0NegVrQooyUmRxSW5SlovaZd6nXIC_w' -H 'Authorization: Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InZ4dnN5bWx5YWtlenJiYXViaWFwIiwicm9sZSI6InNlcnZpY2Vfcm9sZSIsImlhdCI6MTc3NTcyNjk5OCwiZXhwIjoyMDkxMzAyOTk4fQ.Myeaz5U3J0ix0NegVrQooyUmRxSW5SlovaZd6nXIC_w')"
+    ]
+  }
+}
