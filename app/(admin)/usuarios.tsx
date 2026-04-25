@@ -113,6 +113,10 @@ export default function UsuariosScreen() {
     setError("");
     setCreating(true);
 
+    const {
+      data: { session: adminSessionBeforeCreate },
+    } = await supabase.auth.getSession();
+
     const { data, error: authError } = await supabase.auth.signUp({
       email: email.trim().toLowerCase(),
       password,
@@ -123,13 +127,38 @@ export default function UsuariosScreen() {
       return;
     }
 
-    const { error: profileError } = await supabase.from("profiles").insert({
-      id: data.user.id,
-      nombre,
-      email: email.trim().toLowerCase(),
-      rol,
-      activo: true,
-    });
+    const {
+      data: { session: sessionAfterSignUp },
+    } = await supabase.auth.getSession();
+
+    if (
+      adminSessionBeforeCreate &&
+      sessionAfterSignUp?.user?.id !== adminSessionBeforeCreate.user.id
+    ) {
+      const { error: restoreError } = await supabase.auth.setSession({
+        access_token: adminSessionBeforeCreate.access_token,
+        refresh_token: adminSessionBeforeCreate.refresh_token,
+      });
+
+      if (restoreError) {
+        setError(
+          "Se creó el usuario en Auth, pero se perdió la sesión de admin. Iniciá sesión nuevamente.",
+        );
+        setCreating(false);
+        return;
+      }
+    }
+
+    const { error: profileError } = await supabase.from("profiles").upsert(
+      {
+        id: data.user.id,
+        nombre,
+        email: email.trim().toLowerCase(),
+        rol,
+        activo: true,
+      },
+      { onConflict: "id" },
+    );
     if (profileError) {
       setError(profileError.message);
       setCreating(false);
