@@ -30,23 +30,29 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const [loading, setLoading]   = useState(true);
 
   // Carga el perfil del usuario desde la tabla profiles
-  const fetchProfile = async (userId: string) => {
+  const fetchProfile = async (userId: string): Promise<Profile | null> => {
     const { data, error } = await supabase
       .from('profiles')
       .select('id, nombre, email, rol, activo')
       .eq('id', userId)
       .single();
 
-    if (!error && data) setProfile(data as Profile);
-    else setProfile(null);
+    if (!error && data) {
+      const nextProfile = data as Profile;
+      setProfile(nextProfile);
+      return nextProfile;
+    }
+
+    setProfile(null);
+    return null;
   };
 
   useEffect(() => {
     // Sesión inicial
-    supabase.auth.getSession().then(({ data }) => {
+    supabase.auth.getSession().then(async ({ data }) => {
       setSession(data.session);
-      if (data.session?.user) fetchProfile(data.session.user.id);
-      else setLoading(false);
+      if (data.session?.user) await fetchProfile(data.session.user.id);
+      setLoading(false);
     });
 
     // Escucha cambios de auth (login, logout, refresh)
@@ -66,7 +72,17 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const signIn = async (email: string, password: string): Promise<{ error: string | null }> => {
     const { data, error } = await supabase.auth.signInWithPassword({ email, password });
     if (error) return { error: error.message };
-    if (data.user) await fetchProfile(data.user.id);
+
+    if (data.user) {
+      const nextProfile = await fetchProfile(data.user.id);
+      if (!nextProfile) return { error: 'No se encontró el perfil del usuario.' };
+      if (!nextProfile.activo) {
+        await supabase.auth.signOut();
+        setProfile(null);
+        return { error: 'Tu usuario está inactivo. Contactá al administrador.' };
+      }
+    }
+
     return { error: null };
   };
 

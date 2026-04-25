@@ -1,16 +1,14 @@
 import {
-  View, Text, StyleSheet, KeyboardAvoidingView, Platform, ActivityIndicator, Pressable,
+  View, Text, StyleSheet, KeyboardAvoidingView, Platform,
 } from 'react-native';
 import { useState, useMemo } from 'react';
 import { StatusBar } from 'expo-status-bar';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
-import Animated, { useSharedValue, useAnimatedStyle, withSpring } from 'react-native-reanimated';
 import { useMD3Theme } from '@/hooks/use-md3-theme';
 import { TextField, Button, Surface } from '@/components/md3';
 import { useAuth } from '@/context/auth';
 
-const AnimatedPressable = Animated.createAnimatedComponent(Pressable);
 
 export default function LoginScreen() {
   const { colors, typography, shape } = useMD3Theme();
@@ -22,9 +20,6 @@ export default function LoginScreen() {
   const [showPassword, setShowPassword] = useState(false);
   const [loading, setLoading]           = useState(false);
   const [error, setError]               = useState('');
-
-  const scale = useSharedValue(1);
-  const animStyle = useAnimatedStyle(() => ({ transform: [{ scale: scale.value }] }));
 
   const handleLogin = async () => {
     if (!email || !password) { setError('Completá todos los campos.'); return; }
