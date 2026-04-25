@@ -42,6 +42,7 @@ export default function UsuariosScreen() {
   const [creating, setCreating] = useState(false);
   const [savingUserId, setSavingUserId] = useState<string | null>(null);
   const [error, setError] = useState("");
+  const [modalError, setModalError] = useState("");
 
   const cargarUsuarios = useCallback(async () => {
     setLoading(true);
@@ -131,10 +132,10 @@ export default function UsuariosScreen() {
 
   const crearUsuario = async () => {
     if (!nombre || !email || !password) {
-      setError("Completá todos los campos.");
+      setModalError("Completá todos los campos.");
       return;
     }
-    setError("");
+    setModalError("");
     setCreating(true);
 
     const {
@@ -146,7 +147,7 @@ export default function UsuariosScreen() {
       password,
     });
     if (authError || !data.user) {
-      setError(authError?.message ?? "Error al crear usuario.");
+      setModalError(authError?.message ?? "Error al crear usuario.");
       setCreating(false);
       return;
     }
@@ -165,7 +166,7 @@ export default function UsuariosScreen() {
       });
 
       if (restoreError) {
-        setError(
+        setModalError(
           "Se creó el usuario en Auth, pero se perdió la sesión de admin. Iniciá sesión nuevamente.",
         );
         setCreating(false);
@@ -184,7 +185,7 @@ export default function UsuariosScreen() {
       { onConflict: "id" },
     );
     if (profileError) {
-      setError(profileError.message);
+      setModalError(profileError.message);
       setCreating(false);
       return;
     }
@@ -193,6 +194,7 @@ export default function UsuariosScreen() {
     setEmail("");
     setPassword("");
     setRol("mesero");
+    setModalError("");
     setModalVisible(false);
     await cargarUsuarios();
     setCreating(false);
@@ -205,7 +207,10 @@ export default function UsuariosScreen() {
         onBack={() => router.back()}
         trailing={
           <Pressable
-            onPress={() => setModalVisible(true)}
+            onPress={() => {
+              setModalError("");
+              setModalVisible(true);
+            }}
             style={[
               s.addBtn,
               {
@@ -447,6 +452,32 @@ export default function UsuariosScreen() {
               Nuevo usuario
             </Text>
 
+            {modalError ? (
+              <View
+                style={[
+                  s.modalErrorBanner,
+                  {
+                    backgroundColor: colors.errorContainer,
+                    borderRadius: shape.small,
+                  },
+                ]}
+              >
+                <Ionicons
+                  name="alert-circle-outline"
+                  size={14}
+                  color={colors.onErrorContainer}
+                />
+                <Text
+                  style={[
+                    typography.bodySmall,
+                    { color: colors.onErrorContainer, flex: 1 },
+                  ]}
+                >
+                  {modalError}
+                </Text>
+              </View>
+            ) : null}
+
             <TextField
               label="Nombre completo"
               variant="outlined"
@@ -542,7 +573,7 @@ export default function UsuariosScreen() {
                 variant="text"
                 onPress={() => {
                   setModalVisible(false);
-                  setError("");
+                  setModalError("");
                 }}
                 style={{ flex: 1 }}
               />
@@ -608,6 +639,13 @@ const makeStyles = (colors: any, shape: any) =>
       justifyContent: "flex-end",
     },
     modalCard: { padding: 24, paddingTop: 12 },
+    modalErrorBanner: {
+      flexDirection: "row",
+      alignItems: "center",
+      gap: 6,
+      padding: 10,
+      marginBottom: 12,
+    },
     handle: {
       width: 32,
       height: 4,
