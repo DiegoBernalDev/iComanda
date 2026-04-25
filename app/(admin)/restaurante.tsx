@@ -5,7 +5,7 @@ import { AdminRestaurant, getAdminRestaurant } from "@/lib/admin";
 import { supabase } from "@/lib/supabase";
 import { Ionicons } from "@expo/vector-icons";
 import { router } from "expo-router";
-import { useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useState } from "react";
 import {
   ActivityIndicator,
   Platform,
@@ -51,26 +51,55 @@ export default function RestauranteScreen() {
     });
   };
 
-  useEffect(() => {
-    const loadRestaurant = async () => {
-      setLoading(true);
-      setError("");
+  const loadRestaurant = useCallback(async () => {
+    setLoading(true);
+    setError("");
 
-      const nextRestaurant = await getAdminRestaurant(user?.id ?? null);
-      if (!nextRestaurant) {
-        setError("No se encontró un restaurante para administrar.");
-        setRestaurante(null);
-        setLoading(false);
-        return;
-      }
-
-      setRestaurante(nextRestaurant);
-      fillForm(nextRestaurant);
+    const nextRestaurant = await getAdminRestaurant(user?.id ?? null);
+    if (!nextRestaurant) {
+      setError("No se encontró un restaurante para administrar.");
+      setRestaurante(null);
       setLoading(false);
-    };
+      return;
+    }
 
-    loadRestaurant();
+    setRestaurante(nextRestaurant);
+    fillForm(nextRestaurant);
+    setLoading(false);
   }, [user?.id]);
+
+  useEffect(() => {
+    loadRestaurant();
+  }, [loadRestaurant]);
+
+  useEffect(() => {
+    if (!restaurante?.id) return;
+
+    supabase
+      .getChannels()
+      .filter(
+        (ch) =>
+          ch.topic === `realtime:admin-restaurante-live-${restaurante.id}`,
+      )
+      .forEach((ch) => {
+        supabase.removeChannel(ch);
+      });
+
+    const channel = supabase
+      .channel(`admin-restaurante-live-${restaurante.id}`)
+      .on(
+        "postgres_changes",
+        { event: "*", schema: "public", table: "restaurants" },
+        () => {
+          loadRestaurant();
+        },
+      )
+      .subscribe();
+
+    return () => {
+      supabase.removeChannel(channel);
+    };
+  }, [loadRestaurant, restaurante?.id]);
 
   const iniciarEdicion = () => {
     if (!restaurante) return;

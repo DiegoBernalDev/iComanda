@@ -5,7 +5,7 @@ import { getAdminRestaurant } from "@/lib/admin";
 import { supabase } from "@/lib/supabase";
 import { Ionicons } from "@expo/vector-icons";
 import { router } from "expo-router";
-import { useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useState } from "react";
 import {
   ActivityIndicator,
   Modal,
@@ -40,7 +40,7 @@ export default function MesasScreen() {
   const [savingId, setSavingId] = useState<string | null>(null);
   const [error, setError] = useState("");
 
-  const cargarMesas = async (rid: string) => {
+  const cargarMesas = useCallback(async (rid: string) => {
     const { data, error: listError } = await supabase
       .from("tables")
       .select("id, numero, capacidad, activa")
@@ -60,7 +60,7 @@ export default function MesasScreen() {
     }));
 
     setMesas(nextMesas);
-  };
+  }, []);
 
   useEffect(() => {
     const init = async () => {
@@ -80,7 +80,26 @@ export default function MesasScreen() {
     };
 
     init();
-  }, [user?.id]);
+  }, [cargarMesas, user?.id]);
+
+  useEffect(() => {
+    if (!restaurantId) return;
+
+    const channel = supabase
+      .channel(`admin-mesas-live-${restaurantId}`)
+      .on(
+        "postgres_changes",
+        { event: "*", schema: "public", table: "tables" },
+        () => {
+          cargarMesas(restaurantId);
+        },
+      )
+      .subscribe();
+
+    return () => {
+      supabase.removeChannel(channel);
+    };
+  }, [cargarMesas, restaurantId]);
 
   const abrirCrear = () => {
     setEditando(null);

@@ -63,6 +63,13 @@ export default function AdminHome() {
   );
 
   useEffect(() => {
+    supabase
+      .getChannels()
+      .filter((ch) => ch.topic === "realtime:admin-home-live")
+      .forEach((ch) => {
+        supabase.removeChannel(ch);
+      });
+
     const channel = supabase
       .channel("admin-home-live")
       .on(
