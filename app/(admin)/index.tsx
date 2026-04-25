@@ -4,8 +4,9 @@ import { useMD3Theme } from "@/hooks/use-md3-theme";
 import { getAdminRestaurant } from "@/lib/admin";
 import { supabase } from "@/lib/supabase";
 import { Ionicons } from "@expo/vector-icons";
+import { useFocusEffect } from "@react-navigation/native";
 import { router } from "expo-router";
-import { useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useState } from "react";
 import { Pressable, ScrollView, StyleSheet, Text, View } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 
@@ -24,36 +25,67 @@ export default function AdminHome() {
     telefono: "-",
   });
 
-  useEffect(() => {
-    const loadDashboard = async () => {
-      const { data: profilesData } = await supabase
-        .from("profiles")
-        .select("activo");
-      const users = profilesData ?? [];
-      setTotalUsuarios(users.length);
-      setUsuariosActivos(users.filter((u: any) => Boolean(u.activo)).length);
+  const loadDashboard = useCallback(async () => {
+    const { data: profilesData } = await supabase
+      .from("profiles")
+      .select("activo");
+    const users = profilesData ?? [];
+    setTotalUsuarios(users.length);
+    setUsuariosActivos(users.filter((u: any) => Boolean(u.activo)).length);
 
-      const restaurantData = await getAdminRestaurant(profile?.id ?? null);
-      if (!restaurantData) return;
+    const restaurantData = await getAdminRestaurant(profile?.id ?? null);
+    if (!restaurantData) return;
 
-      setRestaurante({
-        nombre: restaurantData.nombre,
-        slug: restaurantData.slug,
-        direccion: restaurantData.direccion ?? "-",
-        telefono: restaurantData.telefono ?? "-",
-      });
+    setRestaurante({
+      nombre: restaurantData.nombre,
+      slug: restaurantData.slug,
+      direccion: restaurantData.direccion ?? "-",
+      telefono: restaurantData.telefono ?? "-",
+    });
 
-      const { data: tablesData } = await supabase
-        .from("tables")
-        .select("activa")
-        .eq("restaurant_id", restaurantData.id);
+    const { data: tablesData } = await supabase
+      .from("tables")
+      .select("activa")
+      .eq("restaurant_id", restaurantData.id);
 
-      const tables = tablesData ?? [];
-      setMesasActivas(tables.filter((t: any) => Boolean(t.activa)).length);
-    };
-
-    loadDashboard();
+    const tables = tablesData ?? [];
+    setMesasActivas(tables.filter((t: any) => Boolean(t.activa)).length);
   }, [profile?.id]);
+
+  useEffect(() => {
+    loadDashboard();
+  }, [loadDashboard]);
+
+  useFocusEffect(
+    useCallback(() => {
+      loadDashboard();
+    }, [loadDashboard]),
+  );
+
+  useEffect(() => {
+    const channel = supabase
+      .channel("admin-home-live")
+      .on(
+        "postgres_changes",
+        { event: "*", schema: "public", table: "tables" },
+        () => loadDashboard(),
+      )
+      .on(
+        "postgres_changes",
+        { event: "*", schema: "public", table: "restaurants" },
+        () => loadDashboard(),
+      )
+      .on(
+        "postgres_changes",
+        { event: "*", schema: "public", table: "profiles" },
+        () => loadDashboard(),
+      )
+      .subscribe();
+
+    return () => {
+      supabase.removeChannel(channel);
+    };
+  }, [loadDashboard]);
 
   return (
     <SafeAreaView style={[s.safe, { backgroundColor: colors.background }]}>

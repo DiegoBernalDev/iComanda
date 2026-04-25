@@ -347,7 +347,9 @@ export default function UsuariosScreen() {
               </View>
               <Pressable
                 onPress={() => toggleActivo(u.id)}
-                disabled={savingUserId === u.id}
+                disabled={
+                  savingUserId === u.id || (u.id === user?.id && u.activo)
+                }
                 style={[
                   s.toggleBtn,
                   {
@@ -355,11 +357,18 @@ export default function UsuariosScreen() {
                       ? colors.tertiaryContainer
                       : colors.surfaceVariant,
                     borderRadius: shape.small,
+                    opacity: u.id === user?.id && u.activo ? 0.55 : 1,
                   },
                 ]}
                 android_ripple={{ color: colors.onSurface + "1F" }}
               >
-                {savingUserId === u.id ? (
+                {u.id === user?.id && u.activo ? (
+                  <Ionicons
+                    name="lock-closed-outline"
+                    size={18}
+                    color={colors.onSurfaceVariant}
+                  />
+                ) : savingUserId === u.id ? (
                   <ActivityIndicator
                     size="small"
                     color={
