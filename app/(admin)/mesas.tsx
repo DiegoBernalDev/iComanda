@@ -105,16 +105,20 @@ export default function MesasScreen() {
     setEditando(null);
     setNumero("");
     setCapacidad("");
+    setError("");
     setModalVisible(true);
   };
   const abrirEditar = (m: Mesa) => {
     setEditando(m);
     setNumero(String(m.numero));
     setCapacidad(String(m.capacidad));
+    setError("");
     setModalVisible(true);
   };
 
   const guardar = async () => {
+    setError("");
+
     if (!numero || !capacidad) {
       setError("Completá todos los campos.");
       return;
@@ -172,6 +176,7 @@ export default function MesasScreen() {
 
     await cargarMesas(restaurantId);
     setSaving(false);
+    setError("");
     setModalVisible(false);
   };
 
@@ -461,6 +466,32 @@ export default function MesasScreen() {
               {editando ? "Editar mesa" : "Nueva mesa"}
             </Text>
 
+            {error ? (
+              <View
+                style={[
+                  s.modalErrorBanner,
+                  {
+                    backgroundColor: colors.errorContainer,
+                    borderRadius: shape.small,
+                  },
+                ]}
+              >
+                <Ionicons
+                  name="alert-circle-outline"
+                  size={14}
+                  color={colors.onErrorContainer}
+                />
+                <Text
+                  style={[
+                    typography.bodySmall,
+                    { color: colors.onErrorContainer, flex: 1 },
+                  ]}
+                >
+                  {error}
+                </Text>
+              </View>
+            ) : null}
+
             <TextField
               label="Número de mesa"
               variant="outlined"
@@ -484,7 +515,10 @@ export default function MesasScreen() {
               <Button
                 label="Cancelar"
                 variant="text"
-                onPress={() => setModalVisible(false)}
+                onPress={() => {
+                  setModalVisible(false);
+                  setError("");
+                }}
                 style={{ flex: 1 }}
               />
               <Button
@@ -553,6 +587,13 @@ const makeStyles = (colors: any, shape: any) =>
       justifyContent: "flex-end",
     },
     modalCard: { padding: 24, paddingTop: 12 },
+    modalErrorBanner: {
+      flexDirection: "row",
+      alignItems: "center",
+      gap: 6,
+      padding: 10,
+      marginBottom: 12,
+    },
     handle: {
       width: 32,
       height: 4,
