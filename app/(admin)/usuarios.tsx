@@ -4,7 +4,7 @@ import { useMD3Theme } from "@/hooks/use-md3-theme";
 import { supabase } from "@/lib/supabase";
 import { Ionicons } from "@expo/vector-icons";
 import { router } from "expo-router";
-import { useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useState } from "react";
 import {
   ActivityIndicator,
   Modal,
@@ -43,7 +43,7 @@ export default function UsuariosScreen() {
   const [savingUserId, setSavingUserId] = useState<string | null>(null);
   const [error, setError] = useState("");
 
-  const cargarUsuarios = async () => {
+  const cargarUsuarios = useCallback(async () => {
     setLoading(true);
     setError("");
 
@@ -70,11 +70,35 @@ export default function UsuariosScreen() {
 
     setUsuarios(nextUsuarios);
     setLoading(false);
-  };
+  }, []);
 
   useEffect(() => {
     cargarUsuarios();
-  }, []);
+  }, [cargarUsuarios]);
+
+  useEffect(() => {
+    supabase
+      .getChannels()
+      .filter((ch) => ch.topic === "realtime:admin-usuarios-live")
+      .forEach((ch) => {
+        supabase.removeChannel(ch);
+      });
+
+    const channel = supabase
+      .channel("admin-usuarios-live")
+      .on(
+        "postgres_changes",
+        { event: "*", schema: "public", table: "profiles" },
+        () => {
+          cargarUsuarios();
+        },
+      )
+      .subscribe();
+
+    return () => {
+      supabase.removeChannel(channel);
+    };
+  }, [cargarUsuarios]);
 
   const toggleActivo = async (id: string) => {
     const target = usuarios.find((u) => u.id === id);
