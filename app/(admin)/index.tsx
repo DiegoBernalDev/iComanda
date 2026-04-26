@@ -1,12 +1,14 @@
 import { View, Text, ScrollView, StyleSheet, Pressable } from 'react-native';
 import { Image } from 'expo-image';
-import { useEffect, useMemo, useState } from 'react';
+import { useCallback, useEffect, useMemo, useState } from 'react';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
+import { useFocusEffect } from '@react-navigation/native';
 import { router } from 'expo-router';
 import { useMD3Theme } from '@/hooks/use-md3-theme';
 import { Enter, Counter, PressScale } from '@/components/md3';
 import { useAuth } from '@/context/auth';
+import { getAdminRestaurant } from '@/lib/admin';
 import { supabase } from '@/lib/supabase';
 
 type AdminStats = {
@@ -37,33 +39,41 @@ export default function AdminHome() {
     logoUrl: '',
   });
 
-  useEffect(() => {
-    const cargarPanel = async () => {
-      const [{ data: profiles }, { data: tables }, { data: restaurants }] = await Promise.all([
-        supabase.from('profiles').select('id, activo'),
-        supabase.from('tables').select('id, activa'),
-        supabase.from('restaurants').select('nombre, slug, direccion, telefono, logo_url').order('created_at', { ascending: true }).limit(1),
-      ]);
+  const cargarPanel = useCallback(async () => {
+    const restaurantData = await getAdminRestaurant(profile?.id ?? null);
+    const [{ data: profiles }, { data: tables }] = await Promise.all([
+      supabase.from('profiles').select('id, activo'),
+      restaurantData
+        ? supabase.from('tables').select('id, activa').eq('restaurant_id', restaurantData.id)
+        : Promise.resolve({ data: [] }),
+    ]);
 
-      setStats({
-        usuarios: profiles?.length ?? 0,
-        usuariosActivos: profiles?.filter(user => user.activo).length ?? 0,
-        mesasActivas: tables?.filter(table => table.activa).length ?? 0,
+    setStats({
+      usuarios: profiles?.length ?? 0,
+      usuariosActivos: profiles?.filter(user => user.activo).length ?? 0,
+      mesasActivas: tables?.filter(table => table.activa).length ?? 0,
+    });
+
+    if (restaurantData) {
+      setRestaurant({
+        nombre: restaurantData.nombre,
+        slug: restaurantData.slug,
+        direccion: restaurantData.direccion ?? '',
+        telefono: restaurantData.telefono ?? '',
+        logoUrl: restaurantData.logo_url ?? '',
       });
+    }
+  }, [profile?.id]);
 
-      if (restaurants?.[0]) {
-        setRestaurant({
-          nombre: restaurants[0].nombre,
-          slug: restaurants[0].slug,
-          direccion: restaurants[0].direccion ?? '',
-          telefono: restaurants[0].telefono ?? '',
-          logoUrl: restaurants[0].logo_url ?? '',
-        });
-      }
-    };
-
+  useEffect(() => {
     cargarPanel();
-  }, []);
+  }, [cargarPanel]);
+
+  useFocusEffect(
+    useCallback(() => {
+      cargarPanel();
+    }, [cargarPanel]),
+  );
 
   return (
     <SafeAreaView style={[s.safe, { backgroundColor: colors.background }]}>

@@ -1,11 +1,13 @@
 import { View, Text, ScrollView, StyleSheet, Pressable, Modal, ActivityIndicator, useWindowDimensions } from 'react-native';
-import { useEffect, useState, useMemo } from 'react';
+import { useCallback, useEffect, useState, useMemo } from 'react';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
 import { router } from 'expo-router';
 import { useMD3Theme } from '@/hooks/use-md3-theme';
 import { TopAppBar, Card, TextField, Button, Chip, Enter, SoftToggle } from '@/components/md3';
 import { Mesa } from '@/constants/mock';
+import { useAuth } from '@/context/auth';
+import { getAdminRestaurant } from '@/lib/admin';
 import { supabase } from '@/lib/supabase';
 import Animated, {
   FadeOut,
@@ -166,6 +168,7 @@ export default function MesasScreen() {
   const { colors, typography, shape } = useMD3Theme();
   const s = useMemo(() => makeStyles(colors, shape), [colors, shape]);
   const { width } = useWindowDimensions();
+  const { user } = useAuth();
   const cardWidth = (width - 40) / 2;
 
   const [mesas, setMesas]               = useState<Mesa[]>([]);
@@ -182,19 +185,14 @@ export default function MesasScreen() {
   const abrirCrear  = () => { setEditando(null); setNumero(''); setCapacidad(''); setModalVisible(true); };
   const abrirEditar = (m: Mesa) => { setEditando(m); setNumero(String(m.numero)); setCapacidad(String(m.capacidad)); setModalVisible(true); };
 
-  const cargarMesas = async () => {
+  const cargarMesas = useCallback(async () => {
     setInitialLoading(true);
     setError('');
 
-    const { data: restaurant, error: restaurantError } = await supabase
-      .from('restaurants')
-      .select('id')
-      .order('created_at', { ascending: true })
-      .limit(1)
-      .maybeSingle();
+    const restaurant = await getAdminRestaurant(user?.id ?? null);
 
-    if (restaurantError || !restaurant) {
-      setError(restaurantError?.message ?? 'Primero registra los datos del restaurante.');
+    if (!restaurant) {
+      setError('Primero registra los datos del restaurante.');
       setInitialLoading(false);
       return;
     }
@@ -211,11 +209,11 @@ export default function MesasScreen() {
     else setMesas((data ?? []).map(table => toMesa(table)));
 
     setInitialLoading(false);
-  };
+  }, [user?.id]);
 
   useEffect(() => {
     cargarMesas();
-  }, []);
+  }, [cargarMesas]);
 
   const guardar = async () => {
     if (!numero || !capacidad || !restaurantId) return;
