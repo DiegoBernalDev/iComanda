@@ -5,3 +5,4 @@ export { TopAppBar } from './TopAppBar';
 export { Surface }  from './Surface';
 export { Chip }     from './Chip';
 export { FAB }      from './FAB';
+export { Enter, Counter, PressScale, Shake, Pop, SpinToggler, SoftToggle, Pulse } from './Motion';

@@ -1,16 +1,13 @@
 import {
-  View, Text, StyleSheet, KeyboardAvoidingView, Platform, ActivityIndicator, Pressable,
+  View, Text, StyleSheet, KeyboardAvoidingView, Platform,
 } from 'react-native';
 import { useState, useMemo } from 'react';
 import { StatusBar } from 'expo-status-bar';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
-import Animated, { useSharedValue, useAnimatedStyle, withSpring } from 'react-native-reanimated';
 import { useMD3Theme } from '@/hooks/use-md3-theme';
-import { TextField, Button, Surface } from '@/components/md3';
+import { TextField, Button, Surface, Enter } from '@/components/md3';
 import { useAuth } from '@/context/auth';
-
-const AnimatedPressable = Animated.createAnimatedComponent(Pressable);
 
 export default function LoginScreen() {
   const { colors, typography, shape } = useMD3Theme();
@@ -22,9 +19,6 @@ export default function LoginScreen() {
   const [showPassword, setShowPassword] = useState(false);
   const [loading, setLoading]           = useState(false);
   const [error, setError]               = useState('');
-
-  const scale = useSharedValue(1);
-  const animStyle = useAnimatedStyle(() => ({ transform: [{ scale: scale.value }] }));
 
   const handleLogin = async () => {
     if (!email || !password) { setError('Completá todos los campos.'); return; }
@@ -41,20 +35,23 @@ export default function LoginScreen() {
       <KeyboardAvoidingView style={s.scroll} behavior={Platform.OS === 'ios' ? 'padding' : 'height'}>
 
         {/* Marca */}
-        <View style={s.brand}>
-          <Surface elevation="level3" style={s.logoSurface}>
-            <Ionicons name="restaurant" size={36} color={colors.onPrimaryContainer} />
-          </Surface>
-          <Text style={[typography.headlineMedium, { color: colors.onBackground, marginTop: 16 }]}>
-            iComanda
-          </Text>
-          <Text style={[typography.bodyMedium, { color: colors.onSurfaceVariant, marginTop: 4 }]}>
-            Sistema de gestión de comandas
-          </Text>
-        </View>
+        <Enter delay={0} distance={16}>
+          <View style={s.brand}>
+            <Surface elevation="level3" style={s.logoSurface}>
+              <Ionicons name="restaurant" size={36} color={colors.onPrimaryContainer} />
+            </Surface>
+            <Text style={[typography.headlineMedium, { color: colors.onBackground, marginTop: 16 }]}>
+              iComanda
+            </Text>
+            <Text style={[typography.bodyMedium, { color: colors.onSurfaceVariant, marginTop: 4 }]}>
+              Sistema de gestión de comandas
+            </Text>
+          </View>
+        </Enter>
 
         {/* Card de login */}
-        <Surface elevation="level1" style={[s.card, { borderRadius: shape.extraLarge }]}>
+        <Enter delay={120} distance={20}>
+        <View style={[s.card, { borderRadius: shape.extraLarge, backgroundColor: colors.surfaceContainerLow }]}>
           <Text style={[typography.titleLarge, { color: colors.onSurface, marginBottom: 24, textAlign: 'center' }]}>
             Iniciar sesión
           </Text>
@@ -68,6 +65,7 @@ export default function LoginScreen() {
             keyboardType="email-address"
             autoCapitalize="none"
             autoCorrect={false}
+            containerColor={colors.surfaceContainerLow}
           />
 
           <View style={{ marginTop: 16 }}>
@@ -81,6 +79,7 @@ export default function LoginScreen() {
               onTrailingPress={() => setShowPassword(v => !v)}
               secureTextEntry={!showPassword}
               error={error || undefined}
+              containerColor={colors.surfaceContainerLow}
             />
           </View>
 
@@ -104,11 +103,14 @@ export default function LoginScreen() {
               <Text style={[typography.labelSmall, { color: colors.onSecondaryContainer }]}>Admin</Text>
             </View>
           </View>
-        </Surface>
+        </View>
+        </Enter>
 
-        <Text style={[typography.bodySmall, { color: colors.onSurfaceVariant, textAlign: 'center', marginTop: 24 }]}>
-          El acceso se asigna según tu rol en el sistema.
-        </Text>
+        <Enter delay={280}>
+          <Text style={[typography.bodySmall, { color: colors.onSurfaceVariant, textAlign: 'center', marginTop: 24 }]}>
+            El acceso se asigna según tu rol en el sistema.
+          </Text>
+        </Enter>
 
       </KeyboardAvoidingView>
     </SafeAreaView>

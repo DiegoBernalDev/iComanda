@@ -1,36 +1,94 @@
 import { View, Text, ScrollView, StyleSheet, Pressable } from 'react-native';
-import { useMemo } from 'react';
+import { Image } from 'expo-image';
+import { useEffect, useMemo, useState } from 'react';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
 import { router } from 'expo-router';
 import { useMD3Theme } from '@/hooks/use-md3-theme';
-import { Card, Surface } from '@/components/md3';
+import { Enter, Counter, PressScale } from '@/components/md3';
 import { useAuth } from '@/context/auth';
-import { MOCK_USUARIOS, MOCK_MESAS, MOCK_RESTAURANTE } from '@/constants/mock';
+import { supabase } from '@/lib/supabase';
+
+type AdminStats = {
+  usuarios: number;
+  usuariosActivos: number;
+  mesasActivas: number;
+};
+
+type RestaurantInfo = {
+  nombre: string;
+  slug: string;
+  direccion: string;
+  telefono: string;
+  logoUrl: string;
+};
 
 export default function AdminHome() {
   const { colors, typography, shape } = useMD3Theme();
   const s = useMemo(() => makeStyles(colors, shape), [colors, shape]);
   const { profile, signOut } = useAuth();
 
-  const usuariosActivos = MOCK_USUARIOS.filter(u => u.activo).length;
-  const mesasActivas    = MOCK_MESAS.filter(m => m.activa).length;
+  const [stats, setStats] = useState<AdminStats>({ usuarios: 0, usuariosActivos: 0, mesasActivas: 0 });
+  const [restaurant, setRestaurant] = useState<RestaurantInfo>({
+    nombre: 'Restaurante',
+    slug: '',
+    direccion: '',
+    telefono: '',
+    logoUrl: '',
+  });
+
+  useEffect(() => {
+    const cargarPanel = async () => {
+      const [{ data: profiles }, { data: tables }, { data: restaurants }] = await Promise.all([
+        supabase.from('profiles').select('id, activo'),
+        supabase.from('tables').select('id, activa'),
+        supabase.from('restaurants').select('nombre, slug, direccion, telefono, logo_url').order('created_at', { ascending: true }).limit(1),
+      ]);
+
+      setStats({
+        usuarios: profiles?.length ?? 0,
+        usuariosActivos: profiles?.filter(user => user.activo).length ?? 0,
+        mesasActivas: tables?.filter(table => table.activa).length ?? 0,
+      });
+
+      if (restaurants?.[0]) {
+        setRestaurant({
+          nombre: restaurants[0].nombre,
+          slug: restaurants[0].slug,
+          direccion: restaurants[0].direccion ?? '',
+          telefono: restaurants[0].telefono ?? '',
+          logoUrl: restaurants[0].logo_url ?? '',
+        });
+      }
+    };
+
+    cargarPanel();
+  }, []);
 
   return (
     <SafeAreaView style={[s.safe, { backgroundColor: colors.background }]}>
       {/* App Bar */}
       <View style={[s.appBar, { backgroundColor: colors.surface, borderBottomColor: colors.outlineVariant }]}>
-        <View>
-          <View style={[s.rolePill, { backgroundColor: colors.primaryContainer, borderRadius: shape.full }]}>
-            <Ionicons name="shield-checkmark-outline" size={12} color={colors.onPrimaryContainer} />
-            <Text style={[typography.labelSmall, { color: colors.onPrimaryContainer }]}>Administrador</Text>
+        <View style={s.appBarLeft}>
+          {restaurant.logoUrl ? (
+            <Image source={{ uri: restaurant.logoUrl }} style={[s.headerLogo, { borderRadius: shape.full }]} contentFit="cover" />
+          ) : (
+            <View style={[s.headerLogo, s.headerLogoFallback, { borderRadius: shape.full, backgroundColor: colors.primaryContainer }]}>
+              <Ionicons name="storefront-outline" size={20} color={colors.onPrimaryContainer} />
+            </View>
+          )}
+          <View>
+            <View style={[s.rolePill, { backgroundColor: colors.primaryContainer, borderRadius: shape.full }]}>
+              <Ionicons name="shield-checkmark-outline" size={12} color={colors.onPrimaryContainer} />
+              <Text style={[typography.labelSmall, { color: colors.onPrimaryContainer }]}>Administrador</Text>
+            </View>
+            <Text style={[typography.titleLarge, { color: colors.onSurface, marginTop: 2 }]}>
+              Hola, {profile?.nombre?.split(' ')[0] ?? 'Admin'}
+            </Text>
+            <Text style={[typography.bodySmall, { color: colors.onSurfaceVariant }]} numberOfLines={1}>
+              {restaurant.nombre}
+            </Text>
           </View>
-          <Text style={[typography.titleLarge, { color: colors.onSurface, marginTop: 2 }]}>
-            Hola, {profile?.nombre?.split(' ')[0] ?? 'Admin'}
-          </Text>
-          <Text style={[typography.bodySmall, { color: colors.onSurfaceVariant }]}>
-            {MOCK_RESTAURANTE.nombre}
-          </Text>
         </View>
         <Pressable onPress={signOut} style={[s.iconBtn, { borderRadius: shape.full }]}
           android_ripple={{ color: colors.onSurface + '1F', borderless: true, radius: 24 }}>
@@ -41,59 +99,87 @@ export default function AdminHome() {
       <ScrollView contentContainerStyle={s.scroll} showsVerticalScrollIndicator={false}>
 
         {/* Stats */}
-        <View style={s.statsRow}>
-          {[
-            { icon: 'people-outline'          as const, value: MOCK_USUARIOS.length, label: 'Usuarios',  color: colors.primary   },
-            { icon: 'person-outline'           as const, value: usuariosActivos,      label: 'Activos',   color: colors.tertiary  },
-            { icon: 'grid-outline'             as const, value: mesasActivas,         label: 'Mesas',     color: colors.secondary },
-          ].map(s => (
-            <View key={s.label} style={[{ flex: 1, backgroundColor: colors.surfaceContainerHigh, borderRadius: shape.medium, padding: 14, alignItems: 'center', gap: 4 }]}>
-              <Ionicons name={s.icon} size={20} color={s.color} />
-              <Text style={[typography.headlineSmall, { color: colors.onSurface }]}>{s.value}</Text>
-              <Text style={[typography.labelMedium, { color: colors.onSurfaceVariant }]}>{s.label}</Text>
-            </View>
-          ))}
-        </View>
+        <Enter delay={0}>
+          <View style={s.statsRow}>
+            {[
+              { icon: 'people-outline'          as const, value: stats.usuarios,        label: 'Usuarios',  color: colors.primary   },
+              { icon: 'person-outline'           as const, value: stats.usuariosActivos, label: 'Activos',   color: colors.tertiary  },
+              { icon: 'grid-outline'             as const, value: stats.mesasActivas,    label: 'Mesas',     color: colors.secondary },
+            ].map(s => (
+              <View key={s.label} style={[{ flex: 1, backgroundColor: colors.surfaceContainerHigh, borderRadius: shape.medium, padding: 14, alignItems: 'center', gap: 4 }]}>
+                <Ionicons name={s.icon} size={20} color={s.color} />
+                <Counter value={s.value} style={[typography.headlineSmall, { color: colors.onSurface }]} />
+                <Text style={[typography.labelMedium, { color: colors.onSurfaceVariant }]}>{s.label}</Text>
+              </View>
+            ))}
+          </View>
+        </Enter>
 
         {/* Módulos */}
-        <Text style={[typography.titleMedium, { color: colors.onSurface, marginBottom: 12 }]}>Panel</Text>
+        <Enter delay={100}>
+          <Text style={[typography.titleMedium, { color: colors.onSurface, marginBottom: 12 }]}>Panel</Text>
+        </Enter>
         <View style={s.modulesGrid}>
           {[
-            { icon: 'people-outline'    as const, label: 'Usuarios',    desc: 'Crear y gestionar cuentas',   color: colors.primaryContainer,   on: colors.onPrimaryContainer,   route: '/(admin)/usuarios'    },
-            { icon: 'grid-outline'      as const, label: 'Mesas',       desc: 'CRUD de mesas',               color: colors.secondaryContainer, on: colors.onSecondaryContainer, route: '/(admin)/mesas'       },
-            { icon: 'storefront-outline'as const, label: 'Restaurante', desc: 'Nombre y slug',               color: colors.tertiaryContainer,  on: colors.onTertiaryContainer,  route: '/(admin)/restaurante' },
-            { icon: 'receipt-outline'   as const, label: 'Pedidos',     desc: 'Disponible en Sprint 2',      color: colors.surfaceVariant,     on: colors.onSurfaceVariant,     route: null                   },
-          ].map(m => (
-            <Pressable key={m.label}
-              onPress={m.route ? () => router.push(m.route as any) : undefined}
-              style={[s.moduleCard, { backgroundColor: m.color, borderRadius: shape.large }]}
-              android_ripple={{ color: m.on + '30' }}>
-              <Ionicons name={m.icon} size={28} color={m.on} />
-              <Text style={[typography.titleSmall, { color: m.on, marginTop: 12 }]}>{m.label}</Text>
-              <Text style={[typography.bodySmall, { color: m.on + 'CC', marginTop: 2 }]}>{m.desc}</Text>
-              {m.route && (
-                <Ionicons name="chevron-forward" size={16} color={m.on} style={s.moduleArrow} />
-              )}
-            </Pressable>
+            { icon: 'people-outline'    as const, label: 'Usuarios',    desc: 'Personal y accesos',  bg: colors.primaryContainer,   on: colors.onPrimaryContainer,   route: '/(admin)/usuarios'    },
+            { icon: 'grid-outline'      as const, label: 'Mesas',       desc: 'Salón y capacidad',   bg: colors.secondaryContainer, on: colors.onSecondaryContainer, route: '/(admin)/mesas'       },
+            { icon: 'storefront-outline'as const, label: 'Restaurante', desc: 'Datos del negocio',   bg: colors.tertiaryContainer,  on: colors.onTertiaryContainer,  route: '/(admin)/restaurante' },
+            { icon: 'receipt-outline'   as const, label: 'Pedidos',     desc: 'Próximamente',        bg: colors.surfaceVariant,     on: colors.onSurfaceVariant,     route: null                   },
+          ].map((m, i) => (
+            <Enter key={m.label} delay={150 + i * 70} style={s.moduleCardWrap}>
+              <PressScale
+                onPress={m.route ? () => router.push(m.route as any) : undefined}
+                style={[
+                  s.moduleCard,
+                  {
+                    backgroundColor: m.bg,
+                    borderRadius: shape.large,
+                    opacity: m.route ? 1 : 0.68,
+                  },
+                ]}
+                android_ripple={{ color: m.on + '24' }}>
+                <View style={[s.moduleIconBox, { backgroundColor: m.on + '14', borderRadius: shape.medium }]}>
+                  <Ionicons name={m.icon} size={24} color={m.on} />
+                </View>
+                <Text style={[typography.titleSmall, { color: m.on, marginTop: 14 }]} numberOfLines={1}>{m.label}</Text>
+                <Text style={[typography.bodySmall, { color: m.on + 'CC', marginTop: 2 }]} numberOfLines={2}>{m.desc}</Text>
+                {m.route && (
+                  <Ionicons name="chevron-forward" size={16} color={m.on} style={s.moduleArrow} />
+                )}
+                {!m.route && (
+                  <View style={[s.comingSoonBadge, { borderColor: m.on + '66', borderRadius: shape.full }]}>
+                    <Text style={[typography.labelSmall, { color: m.on }]}>Luego</Text>
+                  </View>
+                )}
+              </PressScale>
+            </Enter>
           ))}
         </View>
 
         {/* Info restaurante */}
-        <Text style={[typography.titleMedium, { color: colors.onSurface, marginBottom: 12 }]}>Restaurante</Text>
-        <Card variant="outlined" style={{ padding: 16 }}>
+        <Enter delay={400}>
+          <Text style={[typography.titleMedium, { color: colors.onSurface, marginBottom: 12 }]}>Datos del restaurante</Text>
+        </Enter>
+        <Enter delay={450}>
+        <View style={[s.restaurantPanel, { backgroundColor: colors.surfaceContainerHigh, borderRadius: shape.large }]}>
           {[
-            { icon: 'storefront-outline' as const, label: 'Nombre',    value: MOCK_RESTAURANTE.nombre    },
-            { icon: 'link-outline'        as const, label: 'Slug',      value: `/${MOCK_RESTAURANTE.slug}` },
-            { icon: 'location-outline'    as const, label: 'Dirección', value: MOCK_RESTAURANTE.direccion },
-            { icon: 'call-outline'        as const, label: 'Teléfono',  value: MOCK_RESTAURANTE.telefono  },
+            { icon: 'storefront-outline' as const, label: 'Nombre',    value: restaurant.nombre    },
+            { icon: 'link-outline'        as const, label: 'Slug',      value: `/${restaurant.slug}` },
+            { icon: 'location-outline'    as const, label: 'Dirección', value: restaurant.direccion },
+            { icon: 'call-outline'        as const, label: 'Teléfono',  value: restaurant.telefono  },
           ].map((row, i, arr) => (
             <View key={row.label} style={[s.infoRow, i < arr.length - 1 && { borderBottomWidth: StyleSheet.hairlineWidth, borderBottomColor: colors.outlineVariant }]}>
-              <Ionicons name={row.icon} size={16} color={colors.onSurfaceVariant} style={{ width: 24 }} />
-              <Text style={[typography.bodySmall, { color: colors.onSurfaceVariant, width: 72 }]}>{row.label}</Text>
-              <Text style={[typography.bodyMedium, { color: colors.onSurface, flex: 1 }]} numberOfLines={1}>{row.value}</Text>
+              <View style={[s.infoIconBox, { backgroundColor: colors.surfaceVariant, borderRadius: shape.small }]}>
+                <Ionicons name={row.icon} size={16} color={colors.onSurfaceVariant} />
+              </View>
+              <View style={s.infoText}>
+                <Text style={[typography.labelSmall, { color: colors.onSurfaceVariant }]}>{row.label}</Text>
+                <Text style={[typography.bodyMedium, { color: colors.onSurface }]} numberOfLines={1}>{row.value || '-'}</Text>
+              </View>
             </View>
           ))}
-        </Card>
+        </View>
+        </Enter>
 
       </ScrollView>
     </SafeAreaView>
@@ -102,15 +188,24 @@ export default function AdminHome() {
 
 const makeStyles = (colors: any, shape: any) => StyleSheet.create({
   safe:    { flex: 1 },
-  appBar:  { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', paddingHorizontal: 16, paddingVertical: 12, borderBottomWidth: StyleSheet.hairlineWidth },
-  rolePill:{ flexDirection: 'row', alignItems: 'center', gap: 4, paddingHorizontal: 10, paddingVertical: 3, alignSelf: 'flex-start', marginBottom: 4 },
+  appBar:    { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', paddingHorizontal: 16, paddingVertical: 12, borderBottomWidth: StyleSheet.hairlineWidth },
+  appBarLeft:{ flexDirection: 'row', alignItems: 'center', gap: 12, flex: 1 },
+  headerLogo:{ width: 44, height: 44 },
+  headerLogoFallback: { alignItems: 'center', justifyContent: 'center' },
+  rolePill:  { flexDirection: 'row', alignItems: 'center', gap: 4, paddingHorizontal: 10, paddingVertical: 3, alignSelf: 'flex-start', marginBottom: 4 },
   iconBtn: { padding: 12 },
   scroll:  { padding: 16, paddingBottom: 40, gap: 0 },
 
   statsRow:   { flexDirection: 'row', gap: 8, marginBottom: 24 },
-  modulesGrid:{ flexDirection: 'row', flexWrap: 'wrap', gap: 8, marginBottom: 24 },
-  moduleCard: { width: '47.5%', padding: 20, minHeight: 140 },
+  modulesGrid:    { flexDirection: 'row', flexWrap: 'wrap', gap: 8, marginBottom: 24 },
+  moduleCardWrap: { width: '47.5%' },
+  moduleCard:     { minHeight: 136, padding: 16 },
+  moduleIconBox:  { width: 44, height: 44, alignItems: 'center', justifyContent: 'center' },
   moduleArrow:{ position: 'absolute', top: 16, right: 16 },
+  comingSoonBadge: { position: 'absolute', top: 14, right: 14, borderWidth: 1, paddingHorizontal: 8, paddingVertical: 2 },
 
+  restaurantPanel: { paddingHorizontal: 12, overflow: 'hidden' },
   infoRow: { flexDirection: 'row', alignItems: 'center', gap: 12, paddingVertical: 12 },
+  infoIconBox: { width: 34, height: 34, alignItems: 'center', justifyContent: 'center' },
+  infoText: { flex: 1, gap: 2 },
 });

@@ -5,6 +5,7 @@ export default function MeseroLayout() {
     <Stack
       screenOptions={{
         headerShown: false,
+        animation: 'slide_from_right',
         contentStyle: { backgroundColor: '#0F0F0F' },
       }}
     />

@@ -166,6 +166,6 @@ export const MD3State = {
   disabledContainer: 0.12,
 } as const;
 
-export type MD3ColorScheme = typeof MD3Colors.light;
+export type MD3ColorScheme = (typeof MD3Colors)[keyof typeof MD3Colors];
 export type MD3TypographyKey = keyof typeof MD3Typography;
 export type MD3ShapeKey = keyof typeof MD3Shape;

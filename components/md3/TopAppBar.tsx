@@ -1,4 +1,4 @@
-import { View, Text, Pressable, StyleSheet, Platform } from 'react-native';
+import { View, Text, Pressable, StyleSheet } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { useMD3Theme } from '@/hooks/use-md3-theme';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';

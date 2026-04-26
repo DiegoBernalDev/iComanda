@@ -45,7 +45,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     // Sesión inicial
     supabase.auth.getSession().then(({ data }) => {
       setSession(data.session);
-      if (data.session?.user) fetchProfile(data.session.user.id);
+      if (data.session?.user) fetchProfile(data.session.user.id).finally(() => setLoading(false));
       else setLoading(false);
     });
 
@@ -67,6 +67,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     const { data, error } = await supabase.auth.signInWithPassword({ email, password });
     if (error) return { error: error.message };
     if (data.user) await fetchProfile(data.user.id);
+    setLoading(false);
     return { error: null };
   };
 
