@@ -1,6 +1,6 @@
 import { View, Text, ScrollView, StyleSheet, Pressable, Platform, ActivityIndicator, KeyboardAvoidingView } from 'react-native';
 import { Image } from 'expo-image';
-import { useEffect, useState, useMemo } from 'react';
+import { useCallback, useEffect, useState, useMemo } from 'react';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
 import { router } from 'expo-router';
@@ -8,6 +8,8 @@ import * as ImagePicker from 'expo-image-picker';
 import { useMD3Theme } from '@/hooks/use-md3-theme';
 import { TopAppBar, Card, TextField, Button, Surface, Pop, PressScale, Enter } from '@/components/md3';
 import { Restaurante } from '@/constants/mock';
+import { useAuth } from '@/context/auth';
+import { getAdminRestaurant } from '@/lib/admin';
 import { supabase } from '@/lib/supabase';
 
 type RestaurantRow = {
@@ -42,6 +44,7 @@ const EMPTY_RESTAURANTE: RestauranteForm = {
 export default function RestauranteScreen() {
   const { colors, typography, shape } = useMD3Theme();
   const s = useMemo(() => makeStyles(colors, shape), [colors, shape]);
+  const { user } = useAuth();
 
   const [restaurante, setRestaurante] = useState<RestauranteForm>(EMPTY_RESTAURANTE);
   const [editando, setEditando]       = useState(false);
@@ -52,31 +55,24 @@ export default function RestauranteScreen() {
   const [guardado, setGuardado]       = useState(false);
   const [error, setError]             = useState('');
 
-  const cargarRestaurante = async () => {
+  const cargarRestaurante = useCallback(async () => {
     setInitialLoading(true);
     setError('');
 
-    const { data, error: fetchError } = await supabase
-      .from('restaurants')
-      .select('id, nombre, slug, direccion, telefono, logo_url')
-      .order('created_at', { ascending: true })
-      .limit(1)
-      .maybeSingle();
+    const data = await getAdminRestaurant(user?.id ?? null);
 
-    if (fetchError) {
-      setError(fetchError.message);
-    } else if (data) {
+    if (data) {
       const nextRestaurante = toRestaurante(data);
       setRestaurante(nextRestaurante);
       setForm(nextRestaurante);
     }
 
     setInitialLoading(false);
-  };
+  }, [user?.id]);
 
   useEffect(() => {
     cargarRestaurante();
-  }, []);
+  }, [cargarRestaurante]);
 
   const iniciarEdicion = () => { setForm({ ...restaurante }); setEditando(true); setGuardado(false); };
   const guardar = async () => {
@@ -97,7 +93,7 @@ export default function RestauranteScreen() {
     };
 
     const query = !restaurante.id
-      ? supabase.from('restaurants').insert(payload)
+      ? supabase.from('restaurants').insert({ ...payload, owner_id: user?.id ?? null })
       : supabase.from('restaurants').update(payload).eq('id', restaurante.id);
 
     const { data, error: saveError } = await query
