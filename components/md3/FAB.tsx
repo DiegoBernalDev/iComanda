@@ -1,6 +1,7 @@
 import { Pressable, StyleSheet, ViewStyle, Platform } from 'react-native';
+import { useEffect } from 'react';
 import { Ionicons } from '@expo/vector-icons';
-import Animated, { useSharedValue, useAnimatedStyle, withSpring } from 'react-native-reanimated';
+import Animated, { useSharedValue, useAnimatedStyle, withSpring, withDelay } from 'react-native-reanimated';
 import { useMD3Theme } from '@/hooks/use-md3-theme';
 
 const AnimatedPressable = Animated.createAnimatedComponent(Pressable);
@@ -19,7 +20,19 @@ interface FABProps {
 export function FAB({ icon, onPress, size = 'medium', variant = 'primary', style }: FABProps) {
   const { colors, shape } = useMD3Theme();
   const scale = useSharedValue(1);
-  const animStyle = useAnimatedStyle(() => ({ transform: [{ scale: scale.value }] }));
+  const enter = useSharedValue(0);
+
+  useEffect(() => {
+    enter.value = withDelay(400, withSpring(1, { damping: 11, stiffness: 200 }));
+  }, [enter]);
+
+  const animStyle = useAnimatedStyle(() => ({
+    transform: [
+      { scale: scale.value * enter.value },
+      { rotate: `${(1 - enter.value) * -90}deg` },
+    ],
+    opacity: enter.value,
+  }));
 
   const dims = { small: 40, medium: 56, large: 96 }[size];
   const iconSize = { small: 24, medium: 24, large: 36 }[size];

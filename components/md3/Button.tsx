@@ -1,4 +1,4 @@
-import { Pressable, Text, View, StyleSheet, ViewStyle, Platform } from 'react-native';
+import { Pressable, Text, StyleSheet, ViewStyle, Platform } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import Animated, { useSharedValue, useAnimatedStyle, withTiming } from 'react-native-reanimated';
 import { useMD3Theme } from '@/hooks/use-md3-theme';

@@ -1,4 +1,4 @@
-import { View, ViewStyle, StyleSheet } from 'react-native';
+import { View, ViewStyle } from 'react-native';
 import { useMD3Theme } from '@/hooks/use-md3-theme';
 import { MD3Elevation } from '@/constants/md3';
 

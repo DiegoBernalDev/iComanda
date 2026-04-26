@@ -28,7 +28,7 @@ function RootNavigator() {
 
   return (
     <ThemeProvider value={colorScheme === 'dark' ? DarkTheme : DefaultTheme}>
-      <Stack screenOptions={{ headerShown: false }}>
+      <Stack screenOptions={{ headerShown: false, animation: 'fade_from_bottom' }}>
         <Stack.Screen name="login"    />
         <Stack.Screen name="(mesero)" />
         <Stack.Screen name="(admin)"  />

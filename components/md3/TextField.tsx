@@ -1,25 +1,38 @@
 import { View, TextInput, Text, Pressable, StyleSheet, TextInputProps } from 'react-native';
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
+import Animated, {
+  useSharedValue,
+  useAnimatedStyle,
+  withTiming,
+  withSequence,
+  interpolate,
+  interpolateColor,
+  Easing,
+} from 'react-native-reanimated';
 import { Ionicons } from '@expo/vector-icons';
 import { useMD3Theme } from '@/hooks/use-md3-theme';
+
+const EMPHASIZED = Easing.bezier(0.2, 0.0, 0, 1.0);
 
 type TextFieldVariant = 'filled' | 'outlined';
 
 interface TextFieldProps extends Omit<TextInputProps, 'style'> {
-  label:          string;
-  variant?:       TextFieldVariant;
-  leadingIcon?:   keyof typeof Ionicons.glyphMap;
-  trailingIcon?:  keyof typeof Ionicons.glyphMap;
+  label:            string;
+  variant?:         TextFieldVariant;
+  leadingIcon?:     keyof typeof Ionicons.glyphMap;
+  trailingIcon?:    keyof typeof Ionicons.glyphMap;
   onTrailingPress?: () => void;
-  error?:         string;
-  supportingText?: string;
+  error?:           string;
+  supportingText?:  string;
+  containerColor?:  string;
 }
 
 export function TextField({
   label, variant = 'outlined', leadingIcon, trailingIcon, onTrailingPress,
-  error, supportingText, value, onFocus, onBlur, ...rest
+  error, supportingText, containerColor, value, onFocus, onBlur, ...rest
 }: TextFieldProps) {
   const { colors, shape } = useMD3Theme();
+  const bgColor = containerColor ?? colors.surface;
   const [focused, setFocused] = useState(false);
   const hasValue = !!value;
   const isActive = focused || hasValue;
@@ -32,8 +45,37 @@ export function TextField({
     : focused ? colors.primary
     : colors.onSurfaceVariant;
 
+  const activeProgress = useSharedValue(isActive ? 1 : 0);
+  useEffect(() => {
+    activeProgress.value = withTiming(isActive ? 1 : 0, { duration: 180, easing: EMPHASIZED });
+  }, [isActive, activeProgress]);
+
+  const labelLeftInactive = leadingIcon ? 48 : 16;
+  const labelAnimStyle = useAnimatedStyle(() => ({
+    top:      interpolate(activeProgress.value, [0, 1], [18, -10]),
+    left:     interpolate(activeProgress.value, [0, 1], [labelLeftInactive, 12]),
+    fontSize: interpolate(activeProgress.value, [0, 1], [16, 12]),
+  }));
+  const labelBgAnimStyle = useAnimatedStyle(() => ({
+    backgroundColor: interpolateColor(activeProgress.value, [0, 1], ['transparent', bgColor]),
+  }));
+
+  const shakeX = useSharedValue(0);
+  useEffect(() => {
+    if (error) {
+      shakeX.value = withSequence(
+        withTiming(-6, { duration: 50 }),
+        withTiming(6,  { duration: 50 }),
+        withTiming(-4, { duration: 50 }),
+        withTiming(4,  { duration: 50 }),
+        withTiming(0,  { duration: 50 }),
+      );
+    }
+  }, [error, shakeX]);
+  const shakeStyle = useAnimatedStyle(() => ({ transform: [{ translateX: shakeX.value }] }));
+
   return (
-    <View style={styles.wrapper}>
+    <Animated.View style={[styles.wrapper, shakeStyle]}>
       {variant === 'filled' ? (
         // Filled variant
         <View style={[
@@ -75,13 +117,14 @@ export function TextField({
           { borderRadius: shape.extraSmall, borderWidth: focused ? 2 : 1, borderColor },
         ]}>
           {/* Floating label cutout */}
-          <Text style={[
+          <Animated.Text style={[
             styles.outlinedLabel,
-            { color: labelColor, backgroundColor: colors.surface },
-            isActive ? styles.outlinedLabelActive : styles.outlinedLabelInactive,
+            { color: labelColor },
+            labelAnimStyle,
+            labelBgAnimStyle,
           ]}>
             {label}
-          </Text>
+          </Animated.Text>
           <View style={styles.outlinedRow}>
             {leadingIcon && (
               <Ionicons name={leadingIcon} size={20} color={colors.onSurfaceVariant} style={styles.leadIcon} />
@@ -109,7 +152,7 @@ export function TextField({
           {error ?? supportingText}
         </Text>
       )}
-    </View>
+    </Animated.View>
   );
 }
 
