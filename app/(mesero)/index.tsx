@@ -1,6 +1,6 @@
 import { View, Text, ScrollView, StyleSheet, Pressable, ActivityIndicator, useWindowDimensions } from 'react-native';
 import { Image } from 'expo-image';
-import { useEffect, useMemo, useState } from 'react';
+import { useCallback, useEffect, useMemo, useState } from 'react';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
 import { useMD3Theme } from '@/hooks/use-md3-theme';
@@ -8,6 +8,32 @@ import { Card, FAB, Enter, Counter, PressScale } from '@/components/md3';
 import { useAuth } from '@/context/auth';
 import { Mesa } from '@/constants/mock';
 import { supabase } from '@/lib/supabase';
+
+type TableRow = {
+  id: string;
+  restaurant_id: string;
+  numero: number;
+  capacidad: number;
+  activa: boolean;
+};
+
+const toMesa = (table: TableRow): Mesa => ({
+  id: table.id,
+  numero: table.numero,
+  capacidad: table.capacidad,
+  activa: table.activa,
+});
+
+const sortMesas = (items: Mesa[]) => [...items].sort((a, b) => a.numero - b.numero);
+
+const upsertMesa = (items: Mesa[], mesa: Mesa) => {
+  const exists = items.some(item => item.id === mesa.id);
+  const next = exists
+    ? items.map(item => item.id === mesa.id ? mesa : item)
+    : [...items, mesa];
+
+  return sortMesas(next);
+};
 
 export default function MeseroHome() {
   const { colors, typography, shape } = useMD3Theme();
@@ -17,6 +43,7 @@ export default function MeseroHome() {
   const [mesas, setMesas] = useState<Mesa[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
+  const [restaurantId, setRestaurantId] = useState<string | null>(null);
   const [restaurantNombre, setRestaurantNombre] = useState('');
   const [restaurantLogo, setRestaurantLogo] = useState('');
 
@@ -24,29 +51,78 @@ export default function MeseroHome() {
   const mesasActivas = mesas.filter(m => m.activa).length;
   const cardWidth = (width - 40) / 2;
 
-  useEffect(() => {
-    const cargarMesas = async () => {
-      setLoading(true);
-      setError('');
+  const cargarMesas = useCallback(async () => {
+    setLoading(true);
+    setError('');
 
-      const [{ data, error: fetchError }, { data: restaurants }] = await Promise.all([
-        supabase.from('tables').select('id, numero, capacidad, activa').order('numero', { ascending: true }),
-        supabase.from('restaurants').select('nombre, logo_url').order('created_at', { ascending: true }).limit(1),
-      ]);
+    const { data: restaurants } = await supabase
+      .from('restaurants')
+      .select('id, nombre, logo_url')
+      .order('created_at', { ascending: true })
+      .limit(1);
 
-      if (fetchError) setError(fetchError.message);
-      else setMesas(data ?? []);
+    const restaurant = restaurants?.[0];
 
-      if (restaurants?.[0]) {
-        setRestaurantNombre(restaurants[0].nombre ?? '');
-        setRestaurantLogo((restaurants[0] as { logo_url?: string | null }).logo_url ?? '');
-      }
-
+    if (!restaurant) {
+      setError('No hay restaurante registrado.');
       setLoading(false);
-    };
+      return;
+    }
 
-    cargarMesas();
+    setRestaurantId(restaurant.id);
+    setRestaurantNombre(restaurant.nombre ?? '');
+    setRestaurantLogo((restaurant as { logo_url?: string | null }).logo_url ?? '');
+
+    const { data, error: fetchError } = await supabase
+      .from('tables')
+      .select('id, restaurant_id, numero, capacidad, activa')
+      .eq('restaurant_id', restaurant.id)
+      .order('numero', { ascending: true });
+
+    if (fetchError) setError(fetchError.message);
+    else setMesas((data ?? []).map(table => toMesa(table)));
+
+    setLoading(false);
   }, []);
+
+  useEffect(() => {
+    cargarMesas();
+  }, [cargarMesas]);
+
+  useEffect(() => {
+    if (!restaurantId) return;
+
+    const channel = supabase
+      .channel(`mesero-mesas-${restaurantId}`)
+      .on(
+        'postgres_changes',
+        {
+          event: '*',
+          schema: 'public',
+          table: 'tables',
+          filter: `restaurant_id=eq.${restaurantId}`,
+        },
+        payload => {
+          if (payload.eventType === 'DELETE') {
+            const oldRow = payload.old as Pick<TableRow, 'id'>;
+            setMesas(prev => prev.filter(mesa => mesa.id !== oldRow.id));
+            return;
+          }
+
+          const newRow = payload.new as TableRow;
+          setMesas(prev => upsertMesa(prev, toMesa(newRow)));
+        },
+      )
+      .subscribe(status => {
+        if (status === 'CHANNEL_ERROR') {
+          setError('No se pudo conectar la actualización en tiempo real de mesas.');
+        }
+      });
+
+    return () => {
+      supabase.removeChannel(channel);
+    };
+  }, [restaurantId]);
 
   return (
     <SafeAreaView style={[s.safe, { backgroundColor: colors.background }]}>

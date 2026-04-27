@@ -21,6 +21,7 @@ import Animated, {
 
 type TableRow = {
   id: string;
+  restaurant_id: string;
   numero: number;
   capacidad: number;
   activa: boolean;
@@ -32,6 +33,17 @@ const toMesa = (table: TableRow): Mesa => ({
   capacidad: table.capacidad,
   activa: table.activa,
 });
+
+const sortMesas = (items: Mesa[]) => [...items].sort((a, b) => a.numero - b.numero);
+
+const upsertMesa = (items: Mesa[], mesa: Mesa) => {
+  const exists = items.some(item => item.id === mesa.id);
+  const next = exists
+    ? items.map(item => item.id === mesa.id ? mesa : item)
+    : [...items, mesa];
+
+  return sortMesas(next);
+};
 
 type MesaCardItemProps = {
   mesa: Mesa;
@@ -201,7 +213,7 @@ export default function MesasScreen() {
 
     const { data, error: tablesError } = await supabase
       .from('tables')
-      .select('id, numero, capacidad, activa')
+      .select('id, restaurant_id, numero, capacidad, activa')
       .eq('restaurant_id', restaurant.id)
       .order('numero', { ascending: true });
 
@@ -214,6 +226,41 @@ export default function MesasScreen() {
   useEffect(() => {
     cargarMesas();
   }, [cargarMesas]);
+
+  useEffect(() => {
+    if (!restaurantId) return;
+
+    const channel = supabase
+      .channel(`admin-mesas-${restaurantId}`)
+      .on(
+        'postgres_changes',
+        {
+          event: '*',
+          schema: 'public',
+          table: 'tables',
+          filter: `restaurant_id=eq.${restaurantId}`,
+        },
+        payload => {
+          if (payload.eventType === 'DELETE') {
+            const oldRow = payload.old as Pick<TableRow, 'id'>;
+            setMesas(prev => prev.filter(mesa => mesa.id !== oldRow.id));
+            return;
+          }
+
+          const newRow = payload.new as TableRow;
+          setMesas(prev => upsertMesa(prev, toMesa(newRow)));
+        },
+      )
+      .subscribe(status => {
+        if (status === 'CHANNEL_ERROR') {
+          setError('No se pudo conectar la actualización en tiempo real de mesas.');
+        }
+      });
+
+    return () => {
+      supabase.removeChannel(channel);
+    };
+  }, [restaurantId]);
 
   const guardar = async () => {
     if (!numero || !capacidad || !restaurantId) return;
@@ -231,24 +278,24 @@ export default function MesasScreen() {
         .from('tables')
         .update({ numero: numeroMesa, capacidad: capacidadMesa })
         .eq('id', editando.id)
-        .select('id, numero, capacidad, activa')
+        .select('id, restaurant_id, numero, capacidad, activa')
         .single();
 
       if (updateError) setError(updateError.message);
       else {
-        setMesas(prev => prev.map(m => m.id === editando.id ? toMesa(data) : m));
+        setMesas(prev => upsertMesa(prev, toMesa(data)));
         saved = true;
       }
     } else {
       const { data, error: insertError } = await supabase
         .from('tables')
         .insert({ restaurant_id: restaurantId, numero: numeroMesa, capacidad: capacidadMesa, activa: true })
-        .select('id, numero, capacidad, activa')
+        .select('id, restaurant_id, numero, capacidad, activa')
         .single();
 
       if (insertError) setError(insertError.message);
       else {
-        setMesas(prev => [...prev, toMesa(data)].sort((a, b) => a.numero - b.numero));
+        setMesas(prev => upsertMesa(prev, toMesa(data)));
         saved = true;
       }
     }
