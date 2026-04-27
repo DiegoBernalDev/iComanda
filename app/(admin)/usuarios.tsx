@@ -7,6 +7,7 @@ import { TopAppBar, Card, TextField, Button, Chip, Enter, PressScale, Pop } from
 import { router } from 'expo-router';
 import { Usuario, Role } from '@/constants/mock';
 import { supabase } from '@/lib/supabase';
+import { useAuth } from '@/context/auth';
 
 type ProfileRow = {
   id: string;
@@ -29,6 +30,7 @@ const toUsuario = (profile: ProfileRow): Usuario => ({
 export default function UsuariosScreen() {
   const { colors, typography, shape } = useMD3Theme();
   const s = useMemo(() => makeStyles(colors, shape), [colors, shape]);
+  const { user } = useAuth();
 
   const [usuarios, setUsuarios]         = useState<Usuario[]>([]);
   const [modalVisible, setModalVisible] = useState(false);
@@ -61,6 +63,11 @@ export default function UsuariosScreen() {
   }, []);
 
   const toggleActivo = async (usuario: Usuario) => {
+    if (usuario.id === user?.id && usuario.activo) {
+      setError('No podés bloquear tu propio usuario administrador.');
+      return;
+    }
+
     const nextActivo = !usuario.activo;
     setSavingId(usuario.id);
     setError('');
@@ -155,60 +162,67 @@ export default function UsuariosScreen() {
           <View style={s.loadingBox}>
             <ActivityIndicator color={colors.primary} />
           </View>
-        ) : usuarios.map((u, i) => (
-          <Enter key={u.id} delay={80 + i * 50}>
-          <Card variant="elevated" style={s.userCard}>
-            <View style={[s.avatar, {
-              backgroundColor: u.rol === 'admin' ? colors.primaryContainer : colors.secondaryContainer,
-              borderRadius: shape.medium,
-            }]}>
-              <Ionicons
-                name={u.rol === 'admin' ? 'shield-checkmark-outline' : 'person-outline'}
-                size={22}
-                color={u.rol === 'admin' ? colors.onPrimaryContainer : colors.onSecondaryContainer}
-              />
-            </View>
-            <View style={s.userInfo}>
-              <Text style={[typography.titleSmall, { color: colors.onSurface }]}>{u.nombre}</Text>
-              <Text style={[typography.bodySmall, { color: colors.onSurfaceVariant }]}>{u.email}</Text>
-              <View style={s.userMeta}>
-                <View style={[s.rolBadge, {
+        ) : usuarios.map((u, i) => {
+          const isCurrentUser = u.id === user?.id;
+          const isSelfBlockDisabled = isCurrentUser && u.activo;
+
+          return (
+            <Enter key={u.id} delay={80 + i * 50}>
+              <Card variant="elevated" style={s.userCard}>
+                <View style={[s.avatar, {
                   backgroundColor: u.rol === 'admin' ? colors.primaryContainer : colors.secondaryContainer,
-                  borderRadius: shape.full,
+                  borderRadius: shape.medium,
                 }]}>
-                  <Text style={[typography.labelSmall, { color: u.rol === 'admin' ? colors.onPrimaryContainer : colors.onSecondaryContainer }]}>
-                    {u.rol}
-                  </Text>
+                  <Ionicons
+                    name={u.rol === 'admin' ? 'shield-checkmark-outline' : 'person-outline'}
+                    size={22}
+                    color={u.rol === 'admin' ? colors.onPrimaryContainer : colors.onSecondaryContainer}
+                  />
                 </View>
-                {!u.activo && (
-                  <View style={[s.rolBadge, { backgroundColor: colors.errorContainer, borderRadius: shape.full }]}>
-                    <Text style={[typography.labelSmall, { color: colors.onErrorContainer }]}>inactivo</Text>
+                <View style={s.userInfo}>
+                  <Text style={[typography.titleSmall, { color: colors.onSurface }]}>{u.nombre}</Text>
+                  <Text style={[typography.bodySmall, { color: colors.onSurfaceVariant }]}>{u.email}</Text>
+                  <View style={s.userMeta}>
+                    <View style={[s.rolBadge, {
+                      backgroundColor: u.rol === 'admin' ? colors.primaryContainer : colors.secondaryContainer,
+                      borderRadius: shape.full,
+                    }]}>
+                      <Text style={[typography.labelSmall, { color: u.rol === 'admin' ? colors.onPrimaryContainer : colors.onSecondaryContainer }]}>
+                        {u.rol}
+                        {isCurrentUser ? ' (vos)' : ''}
+                      </Text>
+                    </View>
+                    {!u.activo && (
+                      <View style={[s.rolBadge, { backgroundColor: colors.errorContainer, borderRadius: shape.full }]}>
+                        <Text style={[typography.labelSmall, { color: colors.onErrorContainer }]}>inactivo</Text>
+                      </View>
+                    )}
                   </View>
-                )}
-              </View>
-            </View>
-            <PressScale
-              onPress={() => toggleActivo(u)}
-              disabled={savingId === u.id}
-              style={[s.toggleBtn, {
-                backgroundColor: u.activo ? colors.tertiaryContainer : colors.surfaceVariant,
-                borderRadius: shape.small,
-              }]}
-              android_ripple={{ color: colors.onSurface + '1F' }}
-            >
-              {savingId === u.id ? (
-                <ActivityIndicator size="small" color={u.activo ? colors.onTertiaryContainer : colors.onSurfaceVariant} />
-              ) : (
-                <Ionicons
-                  name={u.activo ? 'pause-outline' : 'play-outline'}
-                  size={18}
-                  color={u.activo ? colors.onTertiaryContainer : colors.onSurfaceVariant}
-                />
-              )}
-            </PressScale>
-          </Card>
-          </Enter>
-        ))}
+                </View>
+                <PressScale
+                  onPress={() => toggleActivo(u)}
+                  disabled={savingId === u.id || isSelfBlockDisabled}
+                  style={[s.toggleBtn, {
+                    backgroundColor: u.activo ? colors.tertiaryContainer : colors.surfaceVariant,
+                    borderRadius: shape.small,
+                    opacity: isSelfBlockDisabled ? 0.45 : 1,
+                  }]}
+                  android_ripple={{ color: colors.onSurface + '1F' }}
+                >
+                  {savingId === u.id ? (
+                    <ActivityIndicator size="small" color={u.activo ? colors.onTertiaryContainer : colors.onSurfaceVariant} />
+                  ) : (
+                    <Ionicons
+                      name={u.activo ? 'pause-outline' : 'play-outline'}
+                      size={18}
+                      color={u.activo ? colors.onTertiaryContainer : colors.onSurfaceVariant}
+                    />
+                  )}
+                </PressScale>
+              </Card>
+            </Enter>
+          );
+        })}
       </ScrollView>
 
       {/* Modal nuevo usuario */}
