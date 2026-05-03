@@ -1,4 +1,5 @@
 import { Button, Card, Chip, Enter, TextField, TopAppBar } from '@/components/md3';
+import { DatePickerField } from '@/components/md3/date-picker-field';
 import { useAuth } from '@/context/auth';
 import { useMD3Theme } from '@/hooks/use-md3-theme';
 import { getAdminRestaurant } from '@/lib/admin';
@@ -24,6 +25,13 @@ const shiftDaysIso = (days: number) => {
   const date = new Date();
   date.setDate(date.getDate() - days);
   return date.toISOString().slice(0, 10);
+};
+
+// Formatear fecha ISO a display (DD/MM/YYYY)
+const formatDateDisplay = (dateStr: string) => {
+  if (!dateStr) return '';
+  const [y, m, d] = dateStr.split('-');
+  return `${d}/${m}/${y}`;
 };
 
 export default function AdminGastosScreen() {
@@ -66,22 +74,6 @@ export default function AdminGastosScreen() {
     // 'all': mostrar campos de filtro custom, inicializar con valores
     setFromDate('');
     setToDate('');
-  };
-
-  // Helper para formatear fecha a display
-  const formatDateDisplay = (dateStr: string) => {
-    if (!dateStr) return '';
-    const [y, m, d] = dateStr.split('-');
-    return `${d}/${m}/${y}`;
-  };
-
-  // Helper para parsear desde display a ISO
-  const parseDateFromDisplay = (displayStr: string) => {
-    const parts = displayStr.split('/');
-    if (parts.length !== 3) return '';
-    const [d, m, y] = parts;
-    if (!y || !m || !d || y.length !== 4) return '';
-    return `${y}-${m.padStart(2, '0')}-${d.padStart(2, '0')}`;
   };
 
   const loadExpenses = useCallback(async () => {
@@ -285,24 +277,19 @@ export default function AdminGastosScreen() {
             <Card variant="outlined" style={s.filterCard}>
               <Text style={[typography.titleSmall, { color: colors.onSurface }]}>Filtrar por rango de fechas</Text>
               
-              {/* Campos de fecha con formato DD/MM/YYYY */}
-              <TextField
-                label="Desde (DD/MM/YYYY)"
-                value={fromDate ? formatDateDisplay(fromDate) : ''}
-                onChangeText={(value) => {
-                  const isoDate = parseDateFromDisplay(value);
-                  setFromDate(isoDate);
-                }}
-                placeholder="01/01/2024"
+              <DatePickerField
+                label="Desde"
+                value={fromDate}
+                onDateChange={setFromDate}
+                placeholder="Fecha inicio"
+                color={colors.onSurfaceVariant}
               />
-              <TextField
-                label="Hasta (DD/MM/YYYY)"
-                value={toDate ? formatDateDisplay(toDate) : ''}
-                onChangeText={(value) => {
-                  const isoDate = parseDateFromDisplay(value);
-                  setToDate(isoDate);
-                }}
-                placeholder={new Date().toLocaleDateString('es-ES')}
+              <DatePickerField
+                label="Hasta"
+                value={toDate}
+                onDateChange={setToDate}
+                placeholder="Fecha fin"
+                color={colors.onSurfaceVariant}
               />
               
               <Button label="Aplicar" variant="tonal" onPress={loadExpenses} style={{ alignSelf: 'flex-start' }} />
@@ -379,15 +366,13 @@ export default function AdminGastosScreen() {
             <TextField label="Descripción" value={descripcion} onChangeText={setDescripcion} />
             <TextField label="Monto" value={monto} onChangeText={setMonto} keyboardType="decimal-pad" />
             
-            {/* Fecha con formato DD/MM/YYYY */}
-            <TextField
-              label="Fecha (DD/MM/YYYY)"
-              value={fecha ? formatDateDisplay(fecha) : ''}
-              onChangeText={(value) => {
-                const isoDate = parseDateFromDisplay(value);
-                if (isoDate) setFecha(isoDate);
-              }}
-              placeholder={new Date().toLocaleDateString('es-ES')}
+            {/* Date picker para fecha */}
+            <DatePickerField
+              label="Fecha"
+              value={fecha}
+              onDateChange={setFecha}
+              placeholder="Seleccionar fecha"
+              color={colors.onSurfaceVariant}
             />
             
             <View style={s.modalActions}>
