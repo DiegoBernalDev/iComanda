@@ -154,14 +154,12 @@ export default function AdminMenuScreen() {
     try {
       const ext = (asset.uri.split('.').pop() || 'jpg').toLowerCase();
       const filePath = `menu/${Date.now()}-${Math.random().toString(36).slice(2)}.${ext}`;
-      const contentType = asset.mimeType || `image/${ext}`;
-
-      const imageResponse = await fetch(asset.uri);
-      const imageBlob = await imageResponse.blob();
+      const formData = new FormData();
+      formData.append('file', { uri: asset.uri, name: filePath, type: `image/${ext}` } as any);
 
       const { error: uploadError } = await supabase.storage
         .from('archivos')
-        .upload(filePath, imageBlob, { contentType, upsert: true });
+        .upload(filePath, formData, { contentType: `image/${ext}`, upsert: true });
       if (uploadError) throw uploadError;
 
       const { data: pub } = supabase.storage.from('archivos').getPublicUrl(filePath);
@@ -449,6 +447,13 @@ export default function AdminMenuScreen() {
             <Text style={[typography.titleLarge, { color: colors.onSurface, marginBottom: 20 }]}>
               {form.id ? 'Editar ítem' : 'Nuevo ítem'}
             </Text>
+
+            {error ? (
+              <View style={[s.errorBanner, { backgroundColor: colors.errorContainer, borderRadius: shape.medium, marginBottom: 16 }]}>
+                <Ionicons name="alert-circle-outline" size={16} color={colors.onErrorContainer} />
+                <Text style={[typography.bodySmall, { color: colors.onErrorContainer, flex: 1 }]}>{error}</Text>
+              </View>
+            ) : null}
 
             <TextField
               label="Nombre"
