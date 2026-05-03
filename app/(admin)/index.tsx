@@ -307,12 +307,12 @@ export default function AdminHome() {
               route: "/(admin)/restaurante",
             },
             {
-              icon: "receipt-outline" as const,
-              label: "Pedidos",
-              desc: "Próximamente",
+              icon: "restaurant-outline" as const,
+              label: "Menú",
+              desc: "Ítems y categorías",
               bg: colors.surfaceVariant,
               on: colors.onSurfaceVariant,
-              route: null,
+              route: "/(admin)/menu",
             },
           ].map((m, i) => (
             <Enter key={m.label} delay={150 + i * 70} style={s.moduleCardWrap}>
