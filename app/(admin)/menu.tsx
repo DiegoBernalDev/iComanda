@@ -67,6 +67,8 @@ export default function AdminMenuScreen() {
   const [form, setForm] = useState<MenuForm>(EMPTY_FORM);
   const [saving, setSaving] = useState(false);
   const [uploadingImage, setUploadingImage] = useState(false);
+  const [categoryStep, setCategoryStep] = useState<'select' | 'new' | null>(null);
+  const [newCategory, setNewCategory] = useState('');
 
   const categories = useMemo(() => {
     const values = new Set<string>();
@@ -475,15 +477,185 @@ export default function AdminMenuScreen() {
               />
             </View>
             <View style={{ marginTop: 14 }}>
-              <TextField
-                label="Categoría"
-                variant="outlined"
-                value={form.categoria}
-                onChangeText={(value) => setForm((prev) => ({ ...prev, categoria: value }))}
-                leadingIcon="pricetags-outline"
-                containerColor={colors.surfaceContainerHigh}
-              />
+              <Pressable
+                onPress={() => setCategoryStep('select')}
+                style={[
+                  s.categorySelector,
+                  {
+                    borderColor: colors.outline,
+                    borderWidth: 1,
+                    borderRadius: shape.medium,
+                    paddingHorizontal: 12,
+                    paddingVertical: 12,
+                    flexDirection: 'row',
+                    alignItems: 'center',
+                    justifyContent: 'space-between',
+                    backgroundColor: colors.surfaceContainerHigh,
+                  },
+                ]}
+              >
+                <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8, flex: 1 }}>
+                  <Ionicons name="pricetags-outline" size={20} color={colors.onSurfaceVariant} />
+                  <Text
+                    style={[
+                      typography.bodyMedium,
+                      {
+                        color: form.categoria ? colors.onSurface : colors.onSurfaceVariant,
+                      },
+                    ]}
+                  >
+                    {form.categoria || 'Seleccionar categoría'}
+                  </Text>
+                </View>
+                <Ionicons name="chevron-down-outline" size={20} color={colors.onSurfaceVariant} />
+              </Pressable>
             </View>
+
+            <Modal visible={categoryStep === 'select'} transparent animationType="slide">
+              <View style={s.modalOverlay}>
+                <View
+                  style={[
+                    s.categoryModalCard,
+                    {
+                      backgroundColor: colors.surfaceContainerHigh,
+                      borderTopLeftRadius: shape.extraLarge,
+                      borderTopRightRadius: shape.extraLarge,
+                    },
+                  ]}
+                >
+                  <View style={[s.handle, { backgroundColor: colors.onSurfaceVariant + '40' }]} />
+                  <Text style={[typography.titleLarge, { color: colors.onSurface, marginBottom: 16 }]}>
+                    Categoría
+                  </Text>
+
+                  <ScrollView style={{ maxHeight: 300, marginBottom: 12 }}>
+                    {categories.map((cat) => (
+                      <Pressable
+                        key={cat}
+                        onPress={() => {
+                          setForm((prev) => ({ ...prev, categoria: cat }));
+                          setCategoryStep(null);
+                        }}
+                        style={[
+                          s.categoryOption,
+                          {
+                            backgroundColor:
+                              form.categoria === cat ? colors.primaryContainer : 'transparent',
+                            paddingHorizontal: 16,
+                            paddingVertical: 12,
+                            borderRadius: shape.small,
+                            marginBottom: 6,
+                          },
+                        ]}
+                      >
+                        <Text
+                          style={[
+                            typography.bodyMedium,
+                            {
+                              color:
+                                form.categoria === cat ? colors.onPrimaryContainer : colors.onSurface,
+                            },
+                          ]}
+                        >
+                          {cat}
+                        </Text>
+                      </Pressable>
+                    ))}
+                  </ScrollView>
+
+                  <View style={{ borderTopWidth: StyleSheet.hairlineWidth, borderTopColor: colors.outlineVariant, paddingTop: 12 }}>
+                    <Pressable
+                      onPress={() => {
+                        setCategoryStep('new');
+                        setNewCategory('');
+                      }}
+                      style={[
+                        s.newCategoryOption,
+                        {
+                          backgroundColor: colors.tertiaryContainer,
+                          paddingHorizontal: 16,
+                          paddingVertical: 12,
+                          borderRadius: shape.small,
+                          flexDirection: 'row',
+                          alignItems: 'center',
+                          gap: 12,
+                        },
+                      ]}
+                    >
+                      <Ionicons name="add-circle-outline" size={20} color={colors.onTertiaryContainer} />
+                      <Text
+                        style={[
+                          typography.bodyMedium,
+                          { color: colors.onTertiaryContainer },
+                        ]}
+                      >
+                        Nueva categoría
+                      </Text>
+                    </Pressable>
+                  </View>
+
+                  <Button
+                    label="Cerrar"
+                    variant="text"
+                    onPress={() => setCategoryStep(null)}
+                    style={{ marginTop: 12 }}
+                  />
+                </View>
+              </View>
+            </Modal>
+
+            <Modal visible={categoryStep === 'new'} transparent animationType="slide">
+              <View style={s.modalOverlay}>
+                <View
+                  style={[
+                    s.categoryModalCard,
+                    {
+                      backgroundColor: colors.surfaceContainerHigh,
+                      borderTopLeftRadius: shape.extraLarge,
+                      borderTopRightRadius: shape.extraLarge,
+                    },
+                  ]}
+                >
+                  <View style={[s.handle, { backgroundColor: colors.onSurfaceVariant + '40' }]} />
+                  <Text style={[typography.titleLarge, { color: colors.onSurface, marginBottom: 16 }]}>
+                    Nueva categoría
+                  </Text>
+
+                  <TextField
+                    label="Nombre de la categoría"
+                    variant="outlined"
+                    value={newCategory}
+                    onChangeText={setNewCategory}
+                    containerColor={colors.surfaceContainerHigh}
+                  />
+
+                  <View style={s.modalActions}>
+                    <Button
+                      label="Cancelar"
+                      variant="text"
+                      onPress={() => {
+                        setCategoryStep('select');
+                        setNewCategory('');
+                      }}
+                      style={{ flex: 1 }}
+                    />
+                    <Button
+                      label="Guardar"
+                      variant="filled"
+                      onPress={() => {
+                        if (newCategory.trim()) {
+                          setForm((prev) => ({ ...prev, categoria: newCategory.trim() }));
+                          setCategoryStep(null);
+                          setNewCategory('');
+                        }
+                      }}
+                      disabled={!newCategory.trim()}
+                      style={{ flex: 2 }}
+                    />
+                  </View>
+                </View>
+              </View>
+            </Modal>
             <View style={{ marginTop: 14 }}>
               <TextField
                 label="Descripción"
@@ -578,6 +750,7 @@ const makeStyles = (colors: any, shape: any) =>
       justifyContent: 'flex-end',
     },
     modalCard: { padding: 24, paddingTop: 12 },
+    categoryModalCard: { padding: 24, paddingTop: 12, maxHeight: '80%' },
     handle: {
       width: 32,
       height: 4,
@@ -585,6 +758,9 @@ const makeStyles = (colors: any, shape: any) =>
       alignSelf: 'center',
       marginBottom: 20,
     },
+    categorySelector: {},
+    categoryOption: {},
+    newCategoryOption: {},
     previewImage: { width: '100%', height: 120, marginTop: 14 },
     modalActions: { flexDirection: 'row', gap: 8, marginTop: 22 },
   });
