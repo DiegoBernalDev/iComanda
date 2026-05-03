@@ -1,7 +1,9 @@
 import { Button, Card, Enter, TopAppBar } from '@/components/md3';
+import { useAuth } from '@/context/auth';
 import { useMD3Theme } from '@/hooks/use-md3-theme';
 import { supabase } from '@/lib/supabase';
 import { Ionicons } from '@expo/vector-icons';
+import { Image } from 'expo-image';
 import { router, useLocalSearchParams } from 'expo-router';
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import {
@@ -21,6 +23,7 @@ type OrderRow = {
   table_id: string;
   estado: 'activa' | 'entregada' | 'cancelada';
   metodo_pago: 'efectivo' | 'qr' | 'tarjeta' | null;
+  pago_confirmado: boolean;
   total: number;
   created_at: string;
   tableNumber: number | null;
@@ -51,6 +54,7 @@ const PAYMENT_LABELS: Record<MetodoPago, string> = {
 
 export default function PedidoDetailScreen() {
   const { id } = useLocalSearchParams<{ id: string }>();
+  const { role } = useAuth();
   const { colors, typography, shape } = useMD3Theme();
   const s = useMemo(() => makeStyles(colors, shape), [colors, shape]);
 
@@ -58,9 +62,12 @@ export default function PedidoDetailScreen() {
   const [items, setItems] = useState<OrderItem[]>([]);
   const [menu, setMenu] = useState<MenuItem[]>([]);
   const [addModalVisible, setAddModalVisible] = useState(false);
+  const [statusModalVisible, setStatusModalVisible] = useState(false);
+  const [pendingStatus, setPendingStatus] = useState<'entregada' | 'cancelada' | null>(null);
   const [addCart, setAddCart] = useState<Record<string, number>>({});
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
+  const [updatingStatus, setUpdatingStatus] = useState(false);
   const [error, setError] = useState('');
 
   const loadOrder = useCallback(async () => {
@@ -72,7 +79,7 @@ export default function PedidoDetailScreen() {
       await Promise.all([
         supabase
           .from('orders')
-          .select('id, restaurant_id, estado, metodo_pago, total, created_at, table_id')
+          .select('id, restaurant_id, estado, metodo_pago, pago_confirmado, total, created_at, table_id')
           .eq('id', id)
           .single(),
         supabase
@@ -208,6 +215,49 @@ export default function PedidoDetailScreen() {
     loadOrder();
   };
 
+  const requestStatusChange = (nextStatus: 'entregada' | 'cancelada') => {
+    setPendingStatus(nextStatus);
+    setStatusModalVisible(true);
+  };
+
+  const confirmStatusChange = async () => {
+    if (!id || !pendingStatus || !order || order.estado !== 'activa') return;
+    setUpdatingStatus(true);
+    setError('');
+
+    const { error: updateError } = await supabase
+      .from('orders')
+      .update({
+        estado: pendingStatus,
+        closed_at: new Date().toISOString(),
+      })
+      .eq('id', id);
+
+    if (updateError) {
+      setError(updateError.message);
+      setUpdatingStatus(false);
+      return;
+    }
+
+    setUpdatingStatus(false);
+    setStatusModalVisible(false);
+    setPendingStatus(null);
+    loadOrder();
+  };
+
+  const canManageStatus = order?.estado === 'activa' && (role === 'mesero' || role === 'admin');
+  const qrPayload = useMemo(() => {
+    if (!order || order.metodo_pago !== 'qr') return '';
+    return `ICOMANDA|ORDER:${order.id}|TOTAL:${order.total.toFixed(2)}|TABLE:${order.tableNumber ?? '-'}`;
+  }, [order]);
+  const qrImageUrl = useMemo(
+    () =>
+      qrPayload
+        ? `https://api.qrserver.com/v1/create-qr-code/?size=240x240&data=${encodeURIComponent(qrPayload)}`
+        : '',
+    [qrPayload],
+  );
+
   return (
     <SafeAreaView style={[s.safe, { backgroundColor: colors.background }]}>
       <TopAppBar title="Detalle del pedido" onBack={() => router.back()} />
@@ -244,11 +294,54 @@ export default function PedidoDetailScreen() {
                 <Text style={[typography.bodySmall, { color: colors.onSurfaceVariant }]}>
                   Pago: {order.metodo_pago ? PAYMENT_LABELS[order.metodo_pago] : 'Sin método'}
                 </Text>
+                {order.metodo_pago === 'qr' ? (
+                  <Text style={[typography.bodySmall, { color: order.pago_confirmado ? colors.tertiary : colors.error }]}>
+                    {order.pago_confirmado ? 'Pago QR confirmado' : 'Pago QR pendiente'}
+                  </Text>
+                ) : null}
+                <Text style={[typography.bodySmall, { color: colors.onSurfaceVariant }]}>
+                  Estado: {order.estado === 'activa' ? 'Activa' : order.estado === 'entregada' ? 'Entregada' : 'Cancelada'}
+                </Text>
                 <Text style={[typography.headlineSmall, { color: colors.primary, marginTop: 8 }]}>
                   Bs {order.total.toFixed(2)}
                 </Text>
               </Card>
             </Enter>
+
+            {order.metodo_pago === 'qr' ? (
+              <Enter delay={40}>
+                <Card variant="outlined" style={s.qrCard}>
+                  <Text style={[typography.titleSmall, { color: colors.onSurface }]}>Código QR de pago</Text>
+                  {qrImageUrl ? <Image source={{ uri: qrImageUrl }} style={s.qrImage} contentFit="contain" /> : null}
+                  <Text style={[typography.bodySmall, { color: colors.onSurfaceVariant }]}>
+                    Este QR es fijo para confirmar el cobro del pedido.
+                  </Text>
+                </Card>
+              </Enter>
+            ) : null}
+
+            {canManageStatus ? (
+              <Enter delay={55}>
+                <View style={s.statusActions}>
+                  <Button
+                    label={updatingStatus ? 'Procesando...' : 'Marcar entregada'}
+                    variant="filled"
+                    icon="checkmark-circle-outline"
+                    onPress={() => requestStatusChange('entregada')}
+                    disabled={updatingStatus}
+                    style={{ flex: 1 }}
+                  />
+                  <Button
+                    label="Cancelar pedido"
+                    variant="outlined"
+                    icon="close-circle-outline"
+                    onPress={() => requestStatusChange('cancelada')}
+                    disabled={updatingStatus}
+                    style={{ flex: 1 }}
+                  />
+                </View>
+              </Enter>
+            ) : null}
 
             <Enter delay={70}>
               <View style={s.sectionRow}>
@@ -258,6 +351,7 @@ export default function PedidoDetailScreen() {
                   variant="tonal"
                   icon="add"
                   onPress={() => setAddModalVisible(true)}
+                  disabled={order.estado !== 'activa'}
                 />
               </View>
             </Enter>
@@ -374,6 +468,40 @@ export default function PedidoDetailScreen() {
           </View>
         </View>
       </Modal>
+
+      <Modal visible={statusModalVisible} transparent animationType="fade">
+        <View style={s.centeredOverlay}>
+          <View style={[s.confirmModalCard, { backgroundColor: colors.surfaceContainerHigh, borderRadius: shape.large }]}>
+            <Text style={[typography.titleMedium, { color: colors.onSurface }]}>
+              {pendingStatus === 'cancelada' ? 'Cancelar pedido' : 'Marcar pedido entregado'}
+            </Text>
+            <Text style={[typography.bodySmall, { color: colors.onSurfaceVariant }]}>
+              {pendingStatus === 'cancelada'
+                ? 'Esta acción cerrará el pedido y lo marcará como cancelado.'
+                : 'Esta acción cerrará el pedido y lo marcará como entregado.'}
+            </Text>
+            <View style={s.modalActions}>
+              <Button
+                label="Volver"
+                variant="text"
+                onPress={() => {
+                  if (updatingStatus) return;
+                  setStatusModalVisible(false);
+                  setPendingStatus(null);
+                }}
+                style={{ flex: 1 }}
+              />
+              <Button
+                label={updatingStatus ? 'Guardando...' : 'Confirmar'}
+                variant="filled"
+                onPress={confirmStatusChange}
+                disabled={updatingStatus}
+                style={{ flex: 1 }}
+              />
+            </View>
+          </View>
+        </View>
+      </Modal>
     </SafeAreaView>
   );
 }
@@ -392,6 +520,7 @@ const makeStyles = (colors: any, shape: any) =>
     loadingBox: { paddingVertical: 28 },
     summaryCard: { padding: 16, marginBottom: 14 },
     sectionRow: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' },
+    statusActions: { flexDirection: 'row', gap: 8, marginBottom: 10 },
     emptyCard: { marginTop: 12, padding: 16 },
     itemCard: { marginTop: 8, padding: 0 },
     itemMain: {
@@ -408,6 +537,16 @@ const makeStyles = (colors: any, shape: any) =>
       justifyContent: 'flex-end',
     },
     modalCard: { padding: 24, paddingTop: 12 },
+    centeredOverlay: {
+      flex: 1,
+      backgroundColor: '#00000055',
+      justifyContent: 'center',
+      padding: 24,
+    },
+    confirmModalCard: {
+      padding: 16,
+      gap: 12,
+    },
     handle: {
       width: 32,
       height: 4,
@@ -426,4 +565,6 @@ const makeStyles = (colors: any, shape: any) =>
     },
     addFooter: { marginTop: 10, gap: 10 },
     modalActions: { flexDirection: 'row', gap: 8 },
+    qrCard: { padding: 14, marginBottom: 8, gap: 8 },
+    qrImage: { width: 180, height: 180, alignSelf: 'center' },
   });
