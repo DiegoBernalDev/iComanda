@@ -63,8 +63,25 @@ export default function AdminGastosScreen() {
       setToDate(todayIso());
       return;
     }
+    // 'all': mostrar campos de filtro custom, inicializar con valores
     setFromDate('');
     setToDate('');
+  };
+
+  // Helper para formatear fecha a display
+  const formatDateDisplay = (dateStr: string) => {
+    if (!dateStr) return '';
+    const [y, m, d] = dateStr.split('-');
+    return `${d}/${m}/${y}`;
+  };
+
+  // Helper para parsear desde display a ISO
+  const parseDateFromDisplay = (displayStr: string) => {
+    const parts = displayStr.split('/');
+    if (parts.length !== 3) return '';
+    const [d, m, y] = parts;
+    if (!y || !m || !d || y.length !== 4) return '';
+    return `${y}-${m.padStart(2, '0')}-${d.padStart(2, '0')}`;
   };
 
   const loadExpenses = useCallback(async () => {
@@ -149,18 +166,20 @@ export default function AdminGastosScreen() {
   const saveExpense = async () => {
     const trimmedDescription = descripcion.trim();
     const parsedAmount = Number(monto);
-    const dateValid = /^\d{4}-\d{2}-\d{2}$/.test(fecha);
 
+    // Validar descripción
     if (!trimmedDescription) {
       setFormError('La descripción es obligatoria.');
       return;
     }
+    // Validar monto
     if (!Number.isFinite(parsedAmount) || parsedAmount <= 0) {
       setFormError('El monto debe ser mayor a 0.');
       return;
     }
-    if (!dateValid) {
-      setFormError('La fecha debe tener formato YYYY-MM-DD.');
+    // Validar fecha (debe ser ISO format internamente)
+    if (!fecha || !/^\d{4}-\d{2}-\d{2}$/.test(fecha)) {
+      setFormError('La fecha es inválida.');
       return;
     }
     if (!restaurantId) {
@@ -240,7 +259,19 @@ export default function AdminGastosScreen() {
           </View>
         ) : null}
 
+        {/* Botón "Nuevo gasto" prominente */}
         <Enter delay={0}>
+          <Button
+            label="Nuevo gasto"
+            variant="filled"
+            icon="add"
+            onPress={openCreateModal}
+            style={s.newExpenseButton}
+          />
+        </Enter>
+
+        {/* Filtros por presets */}
+        <Enter delay={20}>
           <View style={s.chipsRow}>
             <Chip label="7 días" variant="filter" selected={filter === '7d'} onPress={() => applyFilterPreset('7d')} />
             <Chip label="30 días" variant="filter" selected={filter === '30d'} onPress={() => applyFilterPreset('30d')} />
@@ -248,38 +279,48 @@ export default function AdminGastosScreen() {
           </View>
         </Enter>
 
-        <Enter delay={40}>
-          <Card variant="outlined" style={s.filterCard}>
-            <TextField
-              label="Desde (YYYY-MM-DD)"
-              value={fromDate}
-              onChangeText={(value) => {
-                setFilter('all');
-                setFromDate(value);
-              }}
-            />
-            <TextField
-              label="Hasta (YYYY-MM-DD)"
-              value={toDate}
-              onChangeText={(value) => {
-                setFilter('all');
-                setToDate(value);
-              }}
-            />
-            <View style={s.filterActions}>
-              <Button label="Aplicar" variant="filled" onPress={loadExpenses} style={{ flex: 1 }} />
-              <Button label="Nuevo gasto" variant="tonal" icon="add" onPress={openCreateModal} style={{ flex: 1 }} />
-            </View>
-          </Card>
-        </Enter>
+        {/* Filtro por rango de fechas - Solo visible cuando "Todo" está seleccionado */}
+        {filter === 'all' && (
+          <Enter delay={40}>
+            <Card variant="outlined" style={s.filterCard}>
+              <Text style={[typography.titleSmall, { color: colors.onSurface }]}>Filtrar por rango de fechas</Text>
+              
+              {/* Campos de fecha con formato DD/MM/YYYY */}
+              <TextField
+                label="Desde (DD/MM/YYYY)"
+                value={fromDate ? formatDateDisplay(fromDate) : ''}
+                onChangeText={(value) => {
+                  const isoDate = parseDateFromDisplay(value);
+                  setFromDate(isoDate);
+                }}
+                placeholder="01/01/2024"
+              />
+              <TextField
+                label="Hasta (DD/MM/YYYY)"
+                value={toDate ? formatDateDisplay(toDate) : ''}
+                onChangeText={(value) => {
+                  const isoDate = parseDateFromDisplay(value);
+                  setToDate(isoDate);
+                }}
+                placeholder={new Date().toLocaleDateString('es-ES')}
+              />
+              
+              <Button label="Aplicar" variant="tonal" onPress={loadExpenses} style={{ alignSelf: 'flex-start' }} />
+            </Card>
+          </Enter>
+        )}
 
+        {/* Resumen del período */}
         <Enter delay={80}>
           <Card variant="filled" style={s.summaryCard}>
-            <Text style={[typography.bodySmall, { color: colors.onSurfaceVariant }]}>Total del período</Text>
+            <Text style={[typography.bodySmall, { color: colors.onSurfaceVariant }]}>
+              {filter === '7d' ? 'Últimos 7 días' : filter === '30d' ? 'Últimos 30 días' : 'Período seleccionado'}
+            </Text>
             <Text style={[typography.headlineSmall, { color: colors.primary }]}>Bs {totalPeriodo.toFixed(2)}</Text>
           </Card>
         </Enter>
 
+        {/* Lista de gastos */}
         {loading ? (
           <View style={s.loadingBox}>
             <ActivityIndicator color={colors.primary} />
@@ -298,7 +339,7 @@ export default function AdminGastosScreen() {
                   <View style={s.expenseInfo}>
                     <Text style={[typography.titleSmall, { color: colors.onSurface }]}>{expense.descripcion}</Text>
                     <Text style={[typography.bodySmall, { color: colors.onSurfaceVariant }]}>
-                      Fecha: {expense.fecha}
+                      Fecha: {formatDateDisplay(expense.fecha)}
                     </Text>
                   </View>
                   <Text style={[typography.titleMedium, { color: colors.primary }]}>Bs {expense.monto.toFixed(2)}</Text>
@@ -322,6 +363,7 @@ export default function AdminGastosScreen() {
         )}
       </ScrollView>
 
+      {/* Modal: Crear/Editar gasto */}
       <Modal visible={formVisible} transparent animationType="fade">
         <View style={s.centeredOverlay}>
           <View style={[s.modalCard, { backgroundColor: colors.surfaceContainerHigh, borderRadius: shape.large }]}>
@@ -336,7 +378,18 @@ export default function AdminGastosScreen() {
             ) : null}
             <TextField label="Descripción" value={descripcion} onChangeText={setDescripcion} />
             <TextField label="Monto" value={monto} onChangeText={setMonto} keyboardType="decimal-pad" />
-            <TextField label="Fecha (YYYY-MM-DD)" value={fecha} onChangeText={setFecha} />
+            
+            {/* Fecha con formato DD/MM/YYYY */}
+            <TextField
+              label="Fecha (DD/MM/YYYY)"
+              value={fecha ? formatDateDisplay(fecha) : ''}
+              onChangeText={(value) => {
+                const isoDate = parseDateFromDisplay(value);
+                if (isoDate) setFecha(isoDate);
+              }}
+              placeholder={new Date().toLocaleDateString('es-ES')}
+            />
+            
             <View style={s.modalActions}>
               <Button
                 label="Cancelar"
@@ -360,6 +413,7 @@ export default function AdminGastosScreen() {
         </View>
       </Modal>
 
+      {/* Modal: Confirmar eliminación */}
       <Modal visible={deleteVisible} transparent animationType="fade">
         <View style={s.centeredOverlay}>
           <View style={[s.modalCard, { backgroundColor: colors.surfaceContainerHigh, borderRadius: shape.large }]}>
@@ -396,10 +450,10 @@ export default function AdminGastosScreen() {
 const makeStyles = (colors: any, shape: any) =>
   StyleSheet.create({
     safe: { flex: 1 },
-    scroll: { padding: 16, paddingBottom: 40, gap: 10 },
+    scroll: { padding: 16, paddingBottom: 40, gap: 12 },
+    newExpenseButton: { paddingVertical: 6 },
     chipsRow: { flexDirection: 'row', gap: 8, flexWrap: 'wrap' },
-    filterCard: { padding: 12, gap: 10 },
-    filterActions: { flexDirection: 'row', gap: 8 },
+    filterCard: { padding: 14, gap: 12, borderWidth: 1, borderColor: colors.outline },
     summaryCard: { padding: 14 },
     loadingBox: { paddingVertical: 32 },
     emptyCard: { padding: 16 },
