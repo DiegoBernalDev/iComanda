@@ -1,13 +1,14 @@
-import { View, Text, ScrollView, StyleSheet, Pressable, ActivityIndicator, useWindowDimensions } from 'react-native';
-import { Image } from 'expo-image';
-import { useCallback, useEffect, useMemo, useState } from 'react';
-import { SafeAreaView } from 'react-native-safe-area-context';
-import { Ionicons } from '@expo/vector-icons';
-import { useMD3Theme } from '@/hooks/use-md3-theme';
-import { Card, FAB, Enter, Counter, PressScale } from '@/components/md3';
-import { useAuth } from '@/context/auth';
+import { Card, Counter, Enter, FAB, PressScale } from '@/components/md3';
 import { Mesa } from '@/constants/mock';
+import { useAuth } from '@/context/auth';
+import { useMD3Theme } from '@/hooks/use-md3-theme';
 import { supabase } from '@/lib/supabase';
+import { Ionicons } from '@expo/vector-icons';
+import { Image } from 'expo-image';
+import { router } from 'expo-router';
+import { useCallback, useEffect, useMemo, useState } from 'react';
+import { ActivityIndicator, Pressable, ScrollView, StyleSheet, Text, useWindowDimensions, View } from 'react-native';
+import { SafeAreaView } from 'react-native-safe-area-context';
 
 type TableRow = {
   id: string;
@@ -171,13 +172,14 @@ export default function MeseroHome() {
         </Enter>
         <View style={s.actionsGrid}>
           {[
-            { icon: 'add-circle-outline' as const, label: 'Nuevo pedido',  color: colors.primaryContainer,   on: colors.onPrimaryContainer },
-            { icon: 'list-outline'        as const, label: 'Mis pedidos',   color: colors.secondaryContainer, on: colors.onSecondaryContainer },
-            { icon: 'restaurant-outline'  as const, label: 'Ver menú',      color: colors.tertiaryContainer,  on: colors.onTertiaryContainer },
-            { icon: 'person-outline'      as const, label: 'Mi perfil',     color: colors.surfaceVariant,     on: colors.onSurfaceVariant },
+            { icon: 'add-circle-outline' as const, label: 'Nuevo pedido',  color: colors.primaryContainer,   on: colors.onPrimaryContainer, route: '/(mesero)/pedido-nuevo' },
+            { icon: 'list-outline'        as const, label: 'Mis pedidos',   color: colors.secondaryContainer, on: colors.onSecondaryContainer, route: '/(mesero)/pedidos' },
+            { icon: 'restaurant-outline'  as const, label: 'Ver menú',      color: colors.tertiaryContainer,  on: colors.onTertiaryContainer, route: '/(mesero)/menu' },
+            { icon: 'person-outline'      as const, label: 'Mi perfil',     color: colors.surfaceVariant,     on: colors.onSurfaceVariant, route: null },
           ].map((a, i) => (
             <Enter key={a.label} delay={120 + i * 50} style={s.actionCardWrap}>
-              <PressScale style={[s.actionCard, { backgroundColor: a.color, borderRadius: shape.large }]}
+              <PressScale onPress={a.route ? () => router.push(a.route as any) : undefined}
+                style={[s.actionCard, { backgroundColor: a.color, borderRadius: shape.large, opacity: a.route ? 1 : 0.7 }]}
                 android_ripple={{ color: a.on + '30' }}>
                 <Ionicons name={a.icon} size={28} color={a.on} />
                 <Text style={[typography.labelLarge, { color: a.on, marginTop: 8 }]}>{a.label}</Text>
@@ -263,7 +265,7 @@ export default function MeseroHome() {
       </ScrollView>
 
       {/* FAB */}
-      <FAB icon="add" onPress={() => {}} style={s.fab} />
+      <FAB icon="add" onPress={() => router.push('/(mesero)/pedido-nuevo')} style={s.fab} />
     </SafeAreaView>
   );
 }
