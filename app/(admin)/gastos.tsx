@@ -7,7 +7,7 @@ import { supabase } from '@/lib/supabase';
 import { Ionicons } from '@expo/vector-icons';
 import { router } from 'expo-router';
 import { useCallback, useEffect, useMemo, useState } from 'react';
-import { ActivityIndicator, Modal, ScrollView, StyleSheet, Text, View } from 'react-native';
+import { ActivityIndicator, Modal, Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
 type Expense = {
@@ -48,6 +48,7 @@ export default function AdminGastosScreen() {
   const [filter, setFilter] = useState<DateFilter>('7d');
   const [fromDate, setFromDate] = useState(shiftDaysIso(7));
   const [toDate, setToDate] = useState(todayIso());
+  const [filterExpanded, setFilterExpanded] = useState(false);
 
   const [formVisible, setFormVisible] = useState(false);
   const [deleteVisible, setDeleteVisible] = useState(false);
@@ -275,24 +276,42 @@ export default function AdminGastosScreen() {
         {filter === 'all' && (
           <Enter delay={40}>
             <Card variant="outlined" style={s.filterCard}>
-              <Text style={[typography.titleSmall, { color: colors.onSurface }]}>Filtrar por rango de fechas</Text>
+              {/* Header con toggle */}
+              <View style={s.filterHeader}>
+                <Text style={[typography.titleSmall, { color: colors.onSurface }]}>Filtrar por rango de fechas</Text>
+                <Pressable onPress={() => setFilterExpanded(!filterExpanded)} style={({ pressed }) => [
+                  s.expandButton,
+                  { opacity: pressed ? 0.7 : 1 },
+                ]}>
+                  <Ionicons 
+                    name={filterExpanded ? 'chevron-up' : 'chevron-down'} 
+                    size={20} 
+                    color={colors.onSurfaceVariant} 
+                  />
+                </Pressable>
+              </View>
               
-              <DatePickerField
-                label="Desde"
-                value={fromDate}
-                onDateChange={setFromDate}
-                placeholder="Fecha inicio"
-                color={colors.onSurfaceVariant}
-              />
-              <DatePickerField
-                label="Hasta"
-                value={toDate}
-                onDateChange={setToDate}
-                placeholder="Fecha fin"
-                color={colors.onSurfaceVariant}
-              />
-              
-              <Button label="Aplicar" variant="tonal" onPress={loadExpenses} style={{ alignSelf: 'flex-start' }} />
+              {/* Contenido del filtro - Expandible/Colapsable */}
+              {filterExpanded && (
+                <>
+                  <DatePickerField
+                    label="Desde"
+                    value={fromDate}
+                    onDateChange={setFromDate}
+                    placeholder="Fecha inicio"
+                    color={colors.onSurfaceVariant}
+                  />
+                  <DatePickerField
+                    label="Hasta"
+                    value={toDate}
+                    onDateChange={setToDate}
+                    placeholder="Fecha fin"
+                    color={colors.onSurfaceVariant}
+                  />
+                  
+                  <Button label="Aplicar" variant="tonal" onPress={loadExpenses} style={{ alignSelf: 'flex-start' }} />
+                </>
+              )}
             </Card>
           </Enter>
         )}
@@ -439,6 +458,8 @@ const makeStyles = (colors: any, shape: any) =>
     newExpenseButton: { paddingVertical: 6 },
     chipsRow: { flexDirection: 'row', gap: 8, flexWrap: 'wrap' },
     filterCard: { padding: 14, gap: 12, borderWidth: 1, borderColor: colors.outline },
+    filterHeader: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', gap: 8 },
+    expandButton: { padding: 4 },
     summaryCard: { padding: 14 },
     loadingBox: { paddingVertical: 32 },
     emptyCard: { padding: 16 },
