@@ -314,6 +314,22 @@ export default function AdminHome() {
               on: colors.onSurfaceVariant,
               route: "/(admin)/menu",
             },
+            {
+              icon: "qr-code-outline" as const,
+              label: "Pagos QR",
+              desc: "Pendientes y confirmación",
+              bg: colors.primaryContainer,
+              on: colors.onPrimaryContainer,
+              route: "/(admin)/pagos-qr",
+            },
+            {
+              icon: "cash-outline" as const,
+              label: "Gastos",
+              desc: "Registro operativo",
+              bg: colors.secondaryContainer,
+              on: colors.onSecondaryContainer,
+              route: "/(admin)/gastos",
+            },
           ].map((m, i) => (
             <Enter key={m.label} delay={150 + i * 70} style={s.moduleCardWrap}>
               <PressScale
