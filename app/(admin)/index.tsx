@@ -307,12 +307,28 @@ export default function AdminHome() {
               route: "/(admin)/restaurante",
             },
             {
-              icon: "receipt-outline" as const,
-              label: "Pedidos",
-              desc: "Próximamente",
+              icon: "restaurant-outline" as const,
+              label: "Menú",
+              desc: "Ítems y categorías",
               bg: colors.surfaceVariant,
               on: colors.onSurfaceVariant,
-              route: null,
+              route: "/(admin)/menu",
+            },
+            {
+              icon: "qr-code-outline" as const,
+              label: "Pagos QR",
+              desc: "Pendientes y confirmación",
+              bg: colors.primaryContainer,
+              on: colors.onPrimaryContainer,
+              route: "/(admin)/pagos-qr",
+            },
+            {
+              icon: "cash-outline" as const,
+              label: "Gastos",
+              desc: "Registro operativo",
+              bg: colors.secondaryContainer,
+              on: colors.onSecondaryContainer,
+              route: "/(admin)/gastos",
             },
           ].map((m, i) => (
             <Enter key={m.label} delay={150 + i * 70} style={s.moduleCardWrap}>
