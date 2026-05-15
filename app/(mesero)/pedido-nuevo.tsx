@@ -3,7 +3,7 @@ import { useAuth } from '@/context/auth';
 import { useMD3Theme } from '@/hooks/use-md3-theme';
 import { supabase } from '@/lib/supabase';
 import { Ionicons } from '@expo/vector-icons';
-import { router } from 'expo-router';
+import { router, useLocalSearchParams } from 'expo-router';
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import { ActivityIndicator, Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
@@ -28,6 +28,7 @@ export default function NuevoPedidoScreen() {
   const { colors, typography, shape } = useMD3Theme();
   const s = useMemo(() => makeStyles(colors, shape), [colors, shape]);
   const { user } = useAuth();
+  const { tableId } = useLocalSearchParams<{ tableId?: string }>();
 
   const [restaurantId, setRestaurantId] = useState<string | null>(null);
   const [tables, setTables] = useState<TableRow[]>([]);
@@ -88,9 +89,11 @@ export default function NuevoPedidoScreen() {
 
     setTables((tablesData ?? []) as TableRow[]);
     setMenu((menuData ?? []) as MenuItem[]);
-    setSelectedTableId((tablesData ?? [])[0]?.id ?? null);
+    const rows = (tablesData ?? []) as TableRow[];
+    const hasRequestedTable = !!tableId && rows.some((table) => table.id === tableId);
+    setSelectedTableId(hasRequestedTable ? (tableId as string) : rows[0]?.id ?? null);
     setLoading(false);
-  }, []);
+  }, [tableId]);
 
   useEffect(() => {
     loadData();
@@ -180,7 +183,7 @@ export default function NuevoPedidoScreen() {
     }
 
     setSaving(false);
-    router.replace({ pathname: '/(mesero)/pedido/[id]', params: { id: order.id } });
+    router.replace({ pathname: '/(mesero)/pedido/[id]', params: { id: order.id } } as any);
   };
 
   return (

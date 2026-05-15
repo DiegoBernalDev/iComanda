@@ -86,7 +86,7 @@ export default function MeseroPedidosScreen() {
         onBack={() => router.back()}
         trailing={
           <Pressable
-            onPress={() => router.push('/(mesero)/pedido-nuevo')}
+            onPress={() => router.push('/(mesero)/pedido-nuevo' as any)}
             style={[s.addBtn, { borderRadius: shape.medium, backgroundColor: colors.primaryContainer }]}
             android_ripple={{ color: colors.onPrimaryContainer + '30' }}
           >
@@ -131,7 +131,7 @@ export default function MeseroPedidosScreen() {
             <Enter key={order.id} delay={80 + index * 25}>
               <PressScale
                 onPress={() =>
-                  router.push({ pathname: '/(mesero)/pedido/[id]', params: { id: order.id } })
+                  router.push({ pathname: '/(mesero)/pedido/[id]', params: { id: order.id } } as any)
                 }
                 style={[
                   s.orderCard,
