@@ -77,7 +77,10 @@ export function TableCard({ item, onPress, onMarkAttended, onClearTable, colors,
         <View style={s.actionSlot}>
           {canMarkAttended ? (
             <PressScale
-              onPress={() => onMarkAttended(item.activeCallId!)}
+              onPress={(e) => {
+                e.stopPropagation();
+                onMarkAttended(item.activeCallId!);
+              }}
               style={[
                 s.callButton,
                 { borderRadius: shape.medium, backgroundColor: colors.errorContainer },
@@ -92,7 +95,10 @@ export function TableCard({ item, onPress, onMarkAttended, onClearTable, colors,
 
           {canClearTable ? (
             <PressScale
-              onPress={() => onClearTable(item.id)}
+              onPress={(e) => {
+                e.stopPropagation();
+                onClearTable(item.id);
+              }}
               style={[
                 s.callButton,
                 { borderRadius: shape.medium, backgroundColor: colors.tertiaryContainer },

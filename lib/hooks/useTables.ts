@@ -237,10 +237,14 @@ export function useTables() {
   }, [load]);
 
   const clearTable = useCallback(async (tableId: string) => {
+    if (!user?.id) return;
+
     const { data: orders, error: fetchError } = await supabase
       .from('orders')
       .select('id')
       .eq('table_id', tableId)
+      .eq('mesero_id', user.id)
+      .eq('restaurant_id', restaurant?.id ?? '')
       .eq('estado', 'entregada')
       .order('created_at', { ascending: false })
       .limit(1);
@@ -256,13 +260,19 @@ export function useTables() {
     }
 
     const orderId = orders[0].id;
+    const { error: updateError } = await supabase
+      .from('orders')
+      .update({ estado: 'cancelada' })
+      .eq('id', orderId)
+      .eq('estado', 'entregada');
 
-    // Marcar orden como entregada pero almacenada/limpia (si se crea nuevo estado)
-    // o solo dejar que los realtime actualicen el estado una vez que cocina la archive
-    // Por ahora: simplemente refrescamos para que Realtime sincronice
-    // (El estado ya es 'entregada', así que la mesa volverá a 'libre' una vez que no haya orden activa)
+    if (updateError) {
+      setError(updateError.message);
+      return;
+    }
+
     load();
-  }, [load]);
+  }, [load, restaurant?.id, user?.id]);
 
   const stats = useMemo(() => ({
     totalMesas: tables.length,
