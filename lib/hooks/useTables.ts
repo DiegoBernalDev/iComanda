@@ -85,6 +85,7 @@ export function useTables() {
           .from('tables')
           .select('id, numero, capacidad, activa')
           .eq('restaurant_id', nextRestaurant.id)
+          .eq('activa', true)
           .order('numero', { ascending: true }),
         supabase
           .from('orders')
