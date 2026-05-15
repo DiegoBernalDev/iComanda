@@ -240,6 +240,7 @@ export interface Database {
           table_id: string;
           restaurant_id: string;
           atendida: boolean;
+          atendida_at: string | null;
           created_at: string;
         };
         Insert: {
@@ -247,6 +248,7 @@ export interface Database {
           table_id: string;
           restaurant_id: string;
           atendida?: boolean;
+          atendida_at?: string | null;
           created_at?: string;
         };
         Update: {
@@ -254,6 +256,7 @@ export interface Database {
           table_id?: string;
           restaurant_id?: string;
           atendida?: boolean;
+          atendida_at?: string | null;
           created_at?: string;
         };
         Relationships: [];
@@ -272,7 +275,7 @@ export interface Database {
     };
     Enums: {
       rol_usuario: "mesero" | "admin";
-      estado_orden: "activa" | "entregada" | "cancelada";
+      estado_orden: "activa" | "lista" | "entregada" | "cancelada";
       metodo_pago: "efectivo" | "qr" | "tarjeta";
     };
   };

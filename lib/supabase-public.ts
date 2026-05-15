@@ -9,8 +9,8 @@ export const supabasePublic = createClient<Database>(
   supabaseAnon,
   {
     auth: {
-      persistSession: false,
-      autoRefreshToken: false,
+      persistSession: true,
+      autoRefreshToken: true,
       detectSessionInUrl: false,
     },
   },
