@@ -33,6 +33,8 @@ const STATUS_META: Record<TableStatus, { label: string; icon: keyof typeof Ionic
 
 export function TableCard({ item, onPress, onMarkAttended, onClearTable, colors, typography, shape }: Props) {
   const meta = STATUS_META[item.status];
+  const canMarkAttended = item.status === 'cliente-llama' && !!item.activeCallId;
+  const canClearTable = item.status === 'entregado';
   const statusColors = {
     ok: { bg: colors.tertiaryContainer, fg: colors.onTertiaryContainer },
     pending: { bg: colors.secondaryContainer, fg: colors.onSecondaryContainer },
@@ -72,35 +74,37 @@ export function TableCard({ item, onPress, onMarkAttended, onClearTable, colors,
           </Text>
         </View>
 
-        {item.status === 'cliente-llama' && item.activeCallId ? (
-          <PressScale
-            onPress={() => onMarkAttended(item.activeCallId!)}
-            style={[
-              s.callButton,
-              { borderRadius: shape.medium, backgroundColor: colors.errorContainer },
-            ]}
-            android_ripple={{ color: colors.onErrorContainer + '20' }}
-          >
-            <Text style={[typography.labelLarge, { color: colors.onErrorContainer }]}>
-              Marcar atendida
-            </Text>
-          </PressScale>
-        ) : null}
+        <View style={s.actionSlot}>
+          {canMarkAttended ? (
+            <PressScale
+              onPress={() => onMarkAttended(item.activeCallId!)}
+              style={[
+                s.callButton,
+                { borderRadius: shape.medium, backgroundColor: colors.errorContainer },
+              ]}
+              android_ripple={{ color: colors.onErrorContainer + '20' }}
+            >
+              <Text style={[typography.labelLarge, { color: colors.onErrorContainer }]}>
+                Marcar atendida
+              </Text>
+            </PressScale>
+          ) : null}
 
-        {item.status === 'entregado' ? (
-          <PressScale
-            onPress={() => onClearTable(item.id)}
-            style={[
-              s.callButton,
-              { borderRadius: shape.medium, backgroundColor: colors.tertiaryContainer },
-            ]}
-            android_ripple={{ color: colors.onTertiaryContainer + '20' }}
-          >
-            <Text style={[typography.labelLarge, { color: colors.onTertiaryContainer }]}>
-              Limpiar mesa
-            </Text>
-          </PressScale>
-        ) : null}
+          {canClearTable ? (
+            <PressScale
+              onPress={() => onClearTable(item.id)}
+              style={[
+                s.callButton,
+                { borderRadius: shape.medium, backgroundColor: colors.tertiaryContainer },
+              ]}
+              android_ripple={{ color: colors.onTertiaryContainer + '20' }}
+            >
+              <Text style={[typography.labelLarge, { color: colors.onTertiaryContainer }]}>
+                Limpiar mesa
+              </Text>
+            </PressScale>
+          ) : null}
+        </View>
       </Card>
     </PressScale>
   );
@@ -111,6 +115,7 @@ const s = StyleSheet.create({
   row: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', gap: 8 },
   badge: { flexDirection: 'row', alignItems: 'center', gap: 4, paddingHorizontal: 8, paddingVertical: 4, flex: 1 },
   infoRow: { flexDirection: 'row', alignItems: 'center', gap: 6 },
-  callButton: { marginTop: 4, paddingHorizontal: 10, paddingVertical: 8, alignItems: 'center' },
+  actionSlot: { minHeight: 40, justifyContent: 'flex-end' },
+  callButton: { paddingHorizontal: 10, paddingVertical: 8, alignItems: 'center' },
 });
 
