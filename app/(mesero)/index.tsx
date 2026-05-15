@@ -14,7 +14,7 @@ export default function MeseroHome() {
   const { colors, typography, shape } = useMD3Theme();
   const s = useMemo(() => makeStyles(colors, shape), [colors, shape]);
   const { profile, signOut } = useAuth();
-  const { restaurant, tables, loading, error, connectionStatus, stats, markCallAttended } = useTables();
+  const { restaurant, tables, loading, error, connectionStatus, stats, markCallAttended, clearTable } = useTables();
 
   return (
     <SafeAreaView style={[s.safe, { backgroundColor: colors.background }]}>
@@ -144,6 +144,7 @@ export default function MeseroHome() {
                   router.push({ pathname: '/(mesero)/pedido-nuevo', params: { tableId: table.id } } as any);
                 }}
                 onMarkAttended={markCallAttended}
+                onClearTable={clearTable}
               />
             ))}
           </View>

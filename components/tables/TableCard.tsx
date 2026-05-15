@@ -17,6 +17,7 @@ type Props = {
   item: TableCardModel;
   onPress: () => void;
   onMarkAttended: (callId: string) => void;
+  onClearTable: (tableId: string) => void;
   colors: any;
   typography: any;
   shape: any;
@@ -30,7 +31,7 @@ const STATUS_META: Record<TableStatus, { label: string; icon: keyof typeof Ionic
   'cliente-llama': { label: 'Cliente llama', icon: 'notifications-outline', tone: 'call' },
 };
 
-export function TableCard({ item, onPress, onMarkAttended, colors, typography, shape }: Props) {
+export function TableCard({ item, onPress, onMarkAttended, onClearTable, colors, typography, shape }: Props) {
   const meta = STATUS_META[item.status];
   const statusColors = {
     ok: { bg: colors.tertiaryContainer, fg: colors.onTertiaryContainer },
@@ -82,6 +83,21 @@ export function TableCard({ item, onPress, onMarkAttended, colors, typography, s
           >
             <Text style={[typography.labelLarge, { color: colors.onErrorContainer }]}>
               Marcar atendida
+            </Text>
+          </PressScale>
+        ) : null}
+
+        {item.status === 'entregado' ? (
+          <PressScale
+            onPress={() => onClearTable(item.id)}
+            style={[
+              s.callButton,
+              { borderRadius: shape.medium, backgroundColor: colors.tertiaryContainer },
+            ]}
+            android_ripple={{ color: colors.onTertiaryContainer + '20' }}
+          >
+            <Text style={[typography.labelLarge, { color: colors.onTertiaryContainer }]}>
+              Limpiar mesa
             </Text>
           </PressScale>
         ) : null}

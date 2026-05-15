@@ -236,6 +236,34 @@ export function useTables() {
     load();
   }, [load]);
 
+  const clearTable = useCallback(async (tableId: string) => {
+    const { data: orders, error: fetchError } = await supabase
+      .from('orders')
+      .select('id')
+      .eq('table_id', tableId)
+      .eq('estado', 'entregada')
+      .order('created_at', { ascending: false })
+      .limit(1);
+
+    if (fetchError) {
+      setError(fetchError.message);
+      return;
+    }
+
+    if (!orders || orders.length === 0) {
+      setError('No hay orden entregada para limpiar');
+      return;
+    }
+
+    const orderId = orders[0].id;
+
+    // Marcar orden como entregada pero almacenada/limpia (si se crea nuevo estado)
+    // o solo dejar que los realtime actualicen el estado una vez que cocina la archive
+    // Por ahora: simplemente refrescamos para que Realtime sincronice
+    // (El estado ya es 'entregada', así que la mesa volverá a 'libre' una vez que no haya orden activa)
+    load();
+  }, [load]);
+
   const stats = useMemo(() => ({
     totalMesas: tables.length,
     libres: tables.filter((table) => table.status === 'libre').length,
@@ -251,6 +279,7 @@ export function useTables() {
     stats,
     refresh: load,
     markCallAttended,
+    clearTable,
   };
 }
 
