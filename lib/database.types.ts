@@ -79,6 +79,7 @@ export interface Database {
           numero: number;
           capacidad: number;
           activa: boolean;
+          last_cleared_at: string | null;
           created_at: string;
         };
         Insert: {
@@ -87,6 +88,7 @@ export interface Database {
           numero: number;
           capacidad?: number;
           activa?: boolean;
+          last_cleared_at?: string | null;
           created_at?: string;
         };
         Update: {
@@ -95,6 +97,7 @@ export interface Database {
           numero?: number;
           capacidad?: number;
           activa?: boolean;
+          last_cleared_at?: string | null;
           created_at?: string;
         };
         Relationships: [];
@@ -271,6 +274,23 @@ export interface Database {
       get_my_restaurant_id: {
         Args: Record<PropertyKey, never>;
         Returns: string;
+      };
+      create_order_with_items: {
+        Args: {
+          p_restaurant_id: string;
+          p_table_id: string;
+          p_mesero_id: string;
+          p_metodo_pago: Database["public"]["Enums"]["metodo_pago"];
+          p_items: Json;
+        };
+        Returns: string;
+      };
+      append_order_items: {
+        Args: {
+          p_order_id: string;
+          p_items: Json;
+        };
+        Returns: number;
       };
     };
     Enums: {

@@ -26,6 +26,7 @@ type OrderRow = {
   table_id: string;
   estado: 'activa' | 'lista' | 'entregada' | 'cancelada';
   created_at: string;
+  closed_at: string | null;
 };
 
 type TableRow = {
@@ -33,6 +34,7 @@ type TableRow = {
   numero: number;
   capacidad: number;
   activa: boolean;
+  last_cleared_at: string | null;
 };
 
 type TableCallRow = {
@@ -83,13 +85,13 @@ export function useTables() {
       await Promise.all([
         supabase
           .from('tables')
-          .select('id, numero, capacidad, activa')
+          .select('id, numero, capacidad, activa, last_cleared_at')
           .eq('restaurant_id', nextRestaurant.id)
           .eq('activa', true)
           .order('numero', { ascending: true }),
         supabase
           .from('orders')
-          .select('id, table_id, estado, created_at')
+          .select('id, table_id, estado, created_at, closed_at')
           .eq('restaurant_id', nextRestaurant.id)
           .eq('mesero_id', user.id)
           .gte('created_at', dayStart.toISOString())
@@ -133,12 +135,16 @@ export function useTables() {
       const activeOrder = activeByTable.get(table.id) ?? null;
       const latestOrder = latestByTable.get(table.id) ?? null;
       const activeCall = callByTable.get(table.id) ?? null;
+      const isDeliveredPendingCleanup =
+        latestOrder?.estado === 'entregada'
+        && !!latestOrder.closed_at
+        && (!table.last_cleared_at || latestOrder.closed_at > table.last_cleared_at);
 
       let status: TableStatus = 'libre';
       if (activeCall) status = 'cliente-llama';
       else if (activeOrder?.estado === 'lista') status = 'listo';
       else if (activeOrder?.estado === 'activa') status = 'pendiente';
-      else if (latestOrder?.estado === 'entregada') status = 'entregado';
+      else if (isDeliveredPendingCleanup) status = 'entregado';
 
       return {
         ...table,
@@ -238,34 +244,11 @@ export function useTables() {
   }, [load]);
 
   const clearTable = useCallback(async (tableId: string) => {
-    if (!user?.id) return;
-
-    const { data: orders, error: fetchError } = await supabase
-      .from('orders')
-      .select('id')
-      .eq('table_id', tableId)
-      .eq('mesero_id', user.id)
-      .eq('restaurant_id', restaurant?.id ?? '')
-      .eq('estado', 'entregada')
-      .order('created_at', { ascending: false })
-      .limit(1);
-
-    if (fetchError) {
-      setError(fetchError.message);
-      return;
-    }
-
-    if (!orders || orders.length === 0) {
-      setError('No hay orden entregada para limpiar');
-      return;
-    }
-
-    const orderId = orders[0].id;
     const { error: updateError } = await supabase
-      .from('orders')
-      .update({ estado: 'cancelada' })
-      .eq('id', orderId)
-      .eq('estado', 'entregada');
+      .from('tables')
+      .update({ last_cleared_at: new Date().toISOString() })
+      .eq('id', tableId)
+      .eq('restaurant_id', restaurant?.id ?? '');
 
     if (updateError) {
       setError(updateError.message);
@@ -273,7 +256,7 @@ export function useTables() {
     }
 
     load();
-  }, [load, restaurant?.id, user?.id]);
+  }, [load, restaurant?.id]);
 
   const stats = useMemo(() => ({
     totalMesas: tables.length,

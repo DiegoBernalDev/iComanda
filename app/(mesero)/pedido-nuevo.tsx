@@ -143,20 +143,22 @@ export default function NuevoPedidoScreen() {
     setSaving(true);
     setError('');
 
-    const { data: order, error: orderError } = await supabase
-      .from('orders')
-      .insert({
-        restaurant_id: restaurantId,
-        table_id: selectedTableId,
-        mesero_id: user.id,
-        estado: 'activa',
-        metodo_pago: paymentMethod,
-        total,
-      })
-      .select('id')
-      .single();
+    const orderItemsPayload = cartItems.map((row) => ({
+      menu_item_id: row.item.id,
+      nombre: row.item.nombre,
+      precio_unitario: row.item.precio,
+      cantidad: row.quantity,
+    }));
 
-    if (orderError || !order) {
+    const { data: orderId, error: orderError } = await supabase.rpc('create_order_with_items', {
+      p_restaurant_id: restaurantId,
+      p_table_id: selectedTableId,
+      p_mesero_id: user.id,
+      p_metodo_pago: paymentMethod,
+      p_items: orderItemsPayload,
+    });
+
+    if (orderError || !orderId) {
       const duplicateActiveOrder = orderError?.code === '23505';
       setError(
         duplicateActiveOrder
@@ -167,23 +169,8 @@ export default function NuevoPedidoScreen() {
       return;
     }
 
-    const orderItemsPayload = cartItems.map((row) => ({
-      order_id: order.id,
-      menu_item_id: row.item.id,
-      nombre: row.item.nombre,
-      precio_unitario: row.item.precio,
-      cantidad: row.quantity,
-    }));
-
-    const { error: itemsError } = await supabase.from('order_items').insert(orderItemsPayload);
-    if (itemsError) {
-      setError(`La orden se creó pero falló el detalle: ${itemsError.message}`);
-      setSaving(false);
-      return;
-    }
-
     setSaving(false);
-    router.replace({ pathname: '/(mesero)/pedido/[id]', params: { id: order.id } } as any);
+    router.replace({ pathname: '/(mesero)/pedido/[id]', params: { id: orderId } } as any);
   };
 
   return (

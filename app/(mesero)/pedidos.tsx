@@ -10,7 +10,7 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 type OrderSummary = {
   id: string;
   table_id: string;
-  estado: 'activa' | 'entregada' | 'cancelada';
+  estado: 'activa' | 'lista' | 'entregada' | 'cancelada';
   metodo_pago: 'efectivo' | 'qr' | 'tarjeta' | null;
   total: number;
   created_at: string;
@@ -38,7 +38,7 @@ export default function MeseroPedidosScreen() {
     const { data, error: fetchError } = await supabase
       .from('orders')
       .select('id, table_id, estado, metodo_pago, total, created_at')
-      .eq('estado', 'activa')
+      .in('estado', ['activa', 'lista'])
       .order('created_at', { ascending: false });
 
     if (fetchError) {

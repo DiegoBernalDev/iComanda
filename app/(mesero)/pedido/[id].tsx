@@ -21,7 +21,7 @@ type OrderRow = {
   id: string;
   restaurant_id: string;
   table_id: string;
-  estado: 'activa' | 'entregada' | 'cancelada';
+  estado: 'activa' | 'lista' | 'entregada' | 'cancelada';
   metodo_pago: 'efectivo' | 'qr' | 'tarjeta' | null;
   pago_confirmado: boolean;
   total: number;
@@ -167,7 +167,6 @@ export default function PedidoDetailScreen() {
         const menuItem = menu.find((row) => row.id === menuId);
         if (!menuItem) return null;
         return {
-          order_id: id,
           menu_item_id: menuItem.id,
           nombre: menuItem.nombre,
           precio_unitario: menuItem.precio,
@@ -175,7 +174,6 @@ export default function PedidoDetailScreen() {
         };
       })
       .filter(Boolean) as {
-      order_id: string;
       menu_item_id: string;
       nombre: string;
       precio_unitario: number;
@@ -190,21 +188,13 @@ export default function PedidoDetailScreen() {
     setSaving(true);
     setError('');
 
-    const { error: insertError } = await supabase.from('order_items').insert(payload);
-    if (insertError) {
-      setError(insertError.message);
-      setSaving(false);
-      return;
-    }
+    const { error: appendError } = await supabase.rpc('append_order_items', {
+      p_order_id: id,
+      p_items: payload,
+    });
 
-    const nextTotal = order.total + addTotal;
-    const { error: updateError } = await supabase
-      .from('orders')
-      .update({ total: nextTotal })
-      .eq('id', id);
-
-    if (updateError) {
-      setError(`Los ítems se agregaron, pero falló actualizar total: ${updateError.message}`);
+    if (appendError) {
+      setError(appendError.message);
       setSaving(false);
       return;
     }
@@ -221,7 +211,7 @@ export default function PedidoDetailScreen() {
   };
 
   const confirmStatusChange = async () => {
-    if (!id || !pendingStatus || !order || order.estado !== 'activa') return;
+    if (!id || !pendingStatus || !order || (order.estado !== 'activa' && order.estado !== 'lista')) return;
     setUpdatingStatus(true);
     setError('');
 
@@ -245,7 +235,7 @@ export default function PedidoDetailScreen() {
     loadOrder();
   };
 
-  const canManageStatus = order?.estado === 'activa' && (role === 'mesero' || role === 'admin');
+  const canManageStatus = !!order && order.estado !== 'entregada' && order.estado !== 'cancelada' && (role === 'mesero' || role === 'admin');
   const qrPayload = useMemo(() => {
     if (!order || order.metodo_pago !== 'qr') return '';
     return `ICOMANDA|ORDER:${order.id}|TOTAL:${order.total.toFixed(2)}|TABLE:${order.tableNumber ?? '-'}`;
@@ -300,7 +290,7 @@ export default function PedidoDetailScreen() {
                   </Text>
                 ) : null}
                 <Text style={[typography.bodySmall, { color: colors.onSurfaceVariant }]}>
-                  Estado: {order.estado === 'activa' ? 'Activa' : order.estado === 'entregada' ? 'Entregada' : 'Cancelada'}
+                  Estado: {order.estado === 'activa' ? 'Activa' : order.estado === 'lista' ? 'Lista' : order.estado === 'entregada' ? 'Entregada' : 'Cancelada'}
                 </Text>
                 <Text style={[typography.headlineSmall, { color: colors.primary, marginTop: 8 }]}>
                   Bs {order.total.toFixed(2)}
@@ -351,7 +341,7 @@ export default function PedidoDetailScreen() {
                   variant="tonal"
                   icon="add"
                   onPress={() => setAddModalVisible(true)}
-                  disabled={order.estado !== 'activa'}
+                  disabled={order.estado === 'entregada' || order.estado === 'cancelada'}
                 />
               </View>
             </Enter>
