@@ -18,14 +18,30 @@ function RootNavigator() {
     const firstSegment = String(segments[0] ?? '');
     const isPublicRoute = firstSegment === 'menu' || firstSegment === 'table';
     if (isPublicRoute) return;
+    const inAdminGroup = firstSegment === '(admin)';
+    const inMeseroGroup = firstSegment === '(mesero)';
+    const inChefGroup = firstSegment === '(chef)';
+    const onLogin = firstSegment === 'login';
 
     if (!session) {
-      router.replace('/login');
+      if (!onLogin) router.replace('/login');
       return;
     }
 
-    if (role === 'admin')  { router.replace('/(admin)');  return; }
-    if (role === 'mesero') { router.replace('/(mesero)'); return; }
+    if (role === 'admin' && !inAdminGroup) {
+      router.replace('/(admin)');
+      return;
+    }
+
+    if (role === 'mesero' && !inMeseroGroup) {
+      router.replace('/(mesero)');
+      return;
+    }
+
+    if (role === 'chef' && !inChefGroup) {
+      router.replace('/(chef)');
+      return;
+    }
 
     // Sesión activa pero perfil aún no cargado — esperar
   }, [session, role, loading, segments]);
@@ -37,6 +53,7 @@ function RootNavigator() {
         <Stack.Screen name="menu/[slug]" />
         <Stack.Screen name="table/[slug]/[tableId]" />
         <Stack.Screen name="(mesero)" />
+        <Stack.Screen name="(chef)" />
         <Stack.Screen name="(admin)"  />
       </Stack>
       <StatusBar style="auto" />

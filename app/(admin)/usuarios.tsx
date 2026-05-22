@@ -505,7 +505,7 @@ export default function UsuariosScreen() {
               Rol
             </Text>
             <View style={s.rolSelector}>
-              {(["mesero", "admin"] as Role[]).map((r) => (
+              {(["mesero", "chef", "admin"] as Role[]).map((r) => (
                 <Pressable
                   key={r}
                   onPress={() => setRol(r)}
@@ -523,11 +523,13 @@ export default function UsuariosScreen() {
                   ]}
                 >
                   <Ionicons
-                    name={
-                      r === "admin"
-                        ? "shield-checkmark-outline"
-                        : "person-outline"
-                    }
+                      name={
+                        r === "admin"
+                          ? "shield-checkmark-outline"
+                          : r === "chef"
+                            ? "restaurant-outline"
+                            : "person-outline"
+                      }
                     size={18}
                     color={
                       rol === r

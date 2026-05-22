@@ -1,6 +1,6 @@
 // Mock data para Sprint 1 — reemplazar con Supabase en HU-02
 
-export type Role = 'mesero' | 'admin';
+export type Role = 'mesero' | 'admin' | 'chef';
 
 export interface Usuario {
   id: string;

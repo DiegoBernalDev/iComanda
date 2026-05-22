@@ -396,7 +396,7 @@ export interface Database {
     };
     Enums: {
       material_movement_type: "consumo" | "reposicion";
-      rol_usuario: "mesero" | "admin";
+      rol_usuario: "mesero" | "admin" | "chef";
       estado_orden: "activa" | "lista" | "entregada" | "cancelada";
       metodo_pago: "efectivo" | "qr" | "tarjeta";
     };

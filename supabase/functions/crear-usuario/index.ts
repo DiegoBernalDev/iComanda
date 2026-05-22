@@ -1,7 +1,7 @@
 import "@supabase/functions-js/edge-runtime.d.ts";
 import { createClient } from "npm:@supabase/supabase-js@2";
 
-type Role = "admin" | "mesero";
+type Role = "admin" | "mesero" | "chef";
 
 type CreateUserBody = {
   nombre?: string;
@@ -74,7 +74,7 @@ Deno.serve(async (req) => {
   if (!nombre || !email || !password || !rol) {
     return jsonResponse({ error: "nombre, email, password y rol son obligatorios." }, 400);
   }
-  if (!["admin", "mesero"].includes(rol)) {
+  if (!["admin", "mesero", "chef"].includes(rol)) {
     return jsonResponse({ error: "Rol invalido." }, 400);
   }
   if (password.length < 6) {
