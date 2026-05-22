@@ -1,6 +1,8 @@
 import { Button, Card, Chip, Enter, TopAppBar } from '@/components/md3';
 import { DatePickerField } from '@/components/md3/date-picker-field';
+import { useAuth } from '@/context/auth';
 import { useMD3Theme } from '@/hooks/use-md3-theme';
+import { getAdminRestaurant } from '@/lib/admin';
 import { ReportPreset, getRangeForPreset } from '@/lib/report-periods';
 import { supabase } from '@/lib/supabase';
 import { Ionicons } from '@expo/vector-icons';
@@ -21,9 +23,11 @@ const formatMoney = (value: number) => `Bs ${value.toFixed(2)}`;
 export default function AdminTopItemsScreen() {
   const { colors, typography, shape } = useMD3Theme();
   const s = useMemo(() => makeStyles(colors, shape), [colors, shape]);
+  const { profile } = useAuth();
   const [preset, setPreset] = useState<ReportPreset>('today');
   const [fromDate, setFromDate] = useState(getRangeForPreset('today').from);
   const [toDate, setToDate] = useState(getRangeForPreset('today').to);
+  const [restaurantId, setRestaurantId] = useState<string | null>(null);
   const [items, setItems] = useState<TopItemRow[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
@@ -36,25 +40,80 @@ export default function AdminTopItemsScreen() {
   };
 
   const load = useCallback(async () => {
-    if (!fromDate || !toDate) return;
+    if (!fromDate || !toDate || !restaurantId) return;
     setLoading(true);
     setError('');
 
-    const { data, error: fetchError } = await supabase.rpc('get_top_items', {
-      date_from: fromDate,
-      date_to: toDate,
-      item_limit: 10,
-    });
+    const { data: orders, error: ordersError } = await supabase
+      .from('orders')
+      .select('id')
+      .eq('restaurant_id', restaurantId)
+      .eq('estado', 'entregada')
+      .eq('pago_confirmado', true)
+      .not('paid_at', 'is', null)
+      .gte('paid_at', `${fromDate}T00:00:00`)
+      .lte('paid_at', `${toDate}T23:59:59.999`);
 
-    if (fetchError) {
-      setError(fetchError.message);
+    if (ordersError) {
+      setError(ordersError.message);
       setLoading(false);
       return;
     }
 
-    setItems((data ?? []) as TopItemRow[]);
+    const orderIds = (orders ?? []).map((order) => order.id);
+    if (orderIds.length === 0) {
+      setItems([]);
+      setLoading(false);
+      return;
+    }
+
+    const { data: orderItems, error: itemsError } = await supabase
+      .from('order_items')
+      .select('menu_item_id, nombre, precio_unitario, cantidad')
+      .in('order_id', orderIds);
+
+    if (itemsError) {
+      setError(itemsError.message);
+      setLoading(false);
+      return;
+    }
+
+    const map = new Map<string, TopItemRow>();
+    for (const item of orderItems ?? []) {
+      const key = item.menu_item_id ?? item.nombre;
+      const current = map.get(key) ?? {
+        menu_item_id: item.menu_item_id,
+        name: item.nombre,
+        total_qty: 0,
+        total_revenue: 0,
+      };
+      current.total_qty += Number(item.cantidad ?? 0);
+      current.total_revenue += Number(item.precio_unitario ?? 0) * Number(item.cantidad ?? 0);
+      map.set(key, current);
+    }
+
+    setItems(
+      [...map.values()]
+        .sort((a, b) => b.total_qty - a.total_qty || b.total_revenue - a.total_revenue)
+        .slice(0, 10),
+    );
     setLoading(false);
-  }, [fromDate, toDate]);
+  }, [fromDate, toDate, restaurantId]);
+
+  useEffect(() => {
+    const loadRestaurant = async () => {
+      const restaurant = await getAdminRestaurant(profile?.id ?? null);
+      if (!restaurant?.id) {
+        setError('No se encontró restaurante para cargar ranking.');
+        setLoading(false);
+        return;
+      }
+
+      setRestaurantId(restaurant.id);
+    };
+
+    loadRestaurant();
+  }, [profile?.id]);
 
   useEffect(() => {
     load();

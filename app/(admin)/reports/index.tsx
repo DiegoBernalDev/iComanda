@@ -1,6 +1,8 @@
 import { Button, Card, Chip, Enter, TopAppBar } from '@/components/md3';
 import { DatePickerField } from '@/components/md3/date-picker-field';
+import { useAuth } from '@/context/auth';
 import { useMD3Theme } from '@/hooks/use-md3-theme';
+import { getAdminRestaurant } from '@/lib/admin';
 import { exportReportAsPdfWeb } from '@/lib/report-export';
 import { ReportPreset, getRangeForPreset } from '@/lib/report-periods';
 import { supabase } from '@/lib/supabase';
@@ -30,9 +32,11 @@ const formatMoney = (value: number) => `Bs ${value.toFixed(2)}`;
 export default function AdminReportsScreen() {
   const { colors, typography, shape } = useMD3Theme();
   const s = useMemo(() => makeStyles(colors, shape), [colors, shape]);
+  const { profile } = useAuth();
   const [preset, setPreset] = useState<ReportPreset>('today');
   const [fromDate, setFromDate] = useState(getRangeForPreset('today').from);
   const [toDate, setToDate] = useState(getRangeForPreset('today').to);
+  const [restaurantId, setRestaurantId] = useState<string | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
   const [report, setReport] = useState<FinancialReport | null>(null);
@@ -46,31 +50,74 @@ export default function AdminReportsScreen() {
   };
 
   const load = useCallback(async () => {
-    if (!fromDate || !toDate) return;
+    if (!fromDate || !toDate || !restaurantId) return;
     setLoading(true);
     setError('');
 
-    const [{ data: reportData, error: reportError }, { data: waiterData, error: waiterError }] = await Promise.all([
-      supabase.rpc('get_report', { date_from: fromDate, date_to: toDate }),
-      supabase.rpc('get_waiter_sales', { date_from: fromDate, date_to: toDate }),
+    const [{ data: orders, error: ordersError }, { data: expenses, error: expensesError }, { data: profiles, error: profilesError }] = await Promise.all([
+      supabase
+        .from('orders')
+        .select('id, mesero_id, total, estado, pago_confirmado, paid_at')
+        .eq('restaurant_id', restaurantId)
+        .eq('estado', 'entregada')
+        .eq('pago_confirmado', true)
+        .not('paid_at', 'is', null)
+        .gte('paid_at', `${fromDate}T00:00:00`)
+        .lte('paid_at', `${toDate}T23:59:59.999`),
+      supabase
+        .from('expenses')
+        .select('id, monto, fecha')
+        .eq('restaurant_id', restaurantId)
+        .gte('fecha', fromDate)
+        .lte('fecha', toDate),
+      supabase.from('profiles').select('id, nombre'),
     ]);
 
-    if (reportError || waiterError) {
-      setError(reportError?.message ?? waiterError?.message ?? 'No se pudieron cargar los reportes.');
+    if (ordersError || expensesError || profilesError) {
+      setError(ordersError?.message ?? expensesError?.message ?? profilesError?.message ?? 'No se pudieron cargar los reportes.');
       setLoading(false);
       return;
     }
 
-    setReport((reportData ?? {
+    const grossIncome = (orders ?? []).reduce((sum, order) => sum + Number(order.total ?? 0), 0);
+    const totalExpenses = (expenses ?? []).reduce((sum, expense) => sum + Number(expense.monto ?? 0), 0);
+    const profileMap = new Map((profiles ?? []).map((item) => [item.id, item.nombre]));
+    const waiterMap = new Map();
+
+    for (const order of orders ?? []) {
+      const current = waiterMap.get(order.mesero_id) ?? { mesero_id: order.mesero_id, waiter_name: profileMap.get(order.mesero_id) ?? 'Mesero', orders_count: 0, total_sales: 0 };
+      current.orders_count += 1;
+      current.total_sales += Number(order.total ?? 0);
+      waiterMap.set(order.mesero_id, current);
+    }
+
+    setReport({
       date_from: fromDate,
       date_to: toDate,
-      gross_income: 0,
-      total_expenses: 0,
-      net_income: 0,
-    }) as FinancialReport);
-    setWaiterSales((waiterData ?? []) as WaiterSalesRow[]);
+      gross_income: grossIncome,
+      total_expenses: totalExpenses,
+      net_income: grossIncome - totalExpenses,
+    });
+    setWaiterSales(
+      [...waiterMap.values()].sort((a: WaiterSalesRow, b: WaiterSalesRow) => b.total_sales - a.total_sales),
+    );
     setLoading(false);
-  }, [fromDate, toDate]);
+  }, [fromDate, toDate, restaurantId]);
+
+  useEffect(() => {
+    const loadRestaurant = async () => {
+      const restaurant = await getAdminRestaurant(profile?.id ?? null);
+      if (!restaurant?.id) {
+        setError('No se encontró restaurante para cargar reportes.');
+        setLoading(false);
+        return;
+      }
+
+      setRestaurantId(restaurant.id);
+    };
+
+    loadRestaurant();
+  }, [profile?.id]);
 
   useEffect(() => {
     load();

@@ -64,13 +64,18 @@ export default function AdminInventarioScreen() {
     setError('');
 
     const [{ data: materialData, error: materialError }, { data: movementData, error: movementError }] = await Promise.all([
-      supabase.rpc('get_material_stock_snapshot'),
+      supabase
+        .from('materials')
+        .select('id, nombre, unidad, stock_minimo, activo, created_at')
+        .eq('restaurant_id', restaurantId)
+        .eq('activo', true)
+        .order('nombre', { ascending: true }),
       supabase
         .from('material_stock_movements')
         .select('id, material_id, movement_type, quantity, reason, notes, created_at')
         .eq('restaurant_id', restaurantId)
         .order('created_at', { ascending: false })
-        .limit(60),
+        .limit(500),
     ]);
 
     if (materialError || movementError) {
@@ -79,8 +84,20 @@ export default function AdminInventarioScreen() {
       return;
     }
 
-    setMaterials(((materialData ?? []) as MaterialRow[]).filter((material) => material.activo));
-    setMovements((movementData ?? []) as MovementRow[]);
+    const movementRows = (movementData ?? []) as MovementRow[];
+    const stockByMaterial = new Map<string, number>();
+    for (const movement of movementRows) {
+      const signedQuantity = movement.movement_type === 'reposicion' ? movement.quantity : -movement.quantity;
+      stockByMaterial.set(movement.material_id, (stockByMaterial.get(movement.material_id) ?? 0) + signedQuantity);
+    }
+
+    setMaterials(
+      ((materialData ?? []) as Omit<MaterialRow, 'current_stock'>[]).map((material) => ({
+        ...material,
+        current_stock: stockByMaterial.get(material.id) ?? 0,
+      })),
+    );
+    setMovements(movementRows);
     setLoading(false);
   }, [restaurantId]);
 
