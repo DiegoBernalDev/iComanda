@@ -5,7 +5,7 @@ import { supabasePublic } from '@/lib/supabase-public';
 import { Ionicons } from '@expo/vector-icons';
 import { Image } from 'expo-image';
 import { useLocalSearchParams } from 'expo-router';
-import { useEffect, useMemo, useState } from 'react';
+import { useCallback, useEffect, useMemo, useState } from 'react';
 import { ActivityIndicator, ScrollView, StyleSheet, Text, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
@@ -30,6 +30,23 @@ export default function TableSessionPage() {
   const [items, setItems] = useState<MenuRow[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
+
+  const loadMenu = useCallback(async (nextRestaurantId: string) => {
+    const { data: menuItems, error: menuError } = await supabasePublic
+      .from('menu_items')
+      .select('id, nombre, descripcion, precio, categoria, imagen_url, disponible')
+      .eq('restaurant_id', nextRestaurantId)
+      .order('categoria', { ascending: true, nullsFirst: false })
+      .order('nombre', { ascending: true });
+
+    if (menuError) {
+      setError(menuError.message);
+      return false;
+    }
+
+    setItems((menuItems ?? []) as MenuRow[]);
+    return true;
+  }, []);
 
   useEffect(() => {
     const bootstrap = async () => {
@@ -85,25 +102,36 @@ export default function TableSessionPage() {
         }
       }
 
-      const { data: menuItems, error: menuError } = await supabasePublic
-        .from('menu_items')
-        .select('id, nombre, descripcion, precio, categoria, imagen_url, disponible')
-        .eq('restaurant_id', restaurant.id)
-        .order('categoria', { ascending: true, nullsFirst: false })
-        .order('nombre', { ascending: true });
-
-      if (menuError) {
-        setError(menuError.message);
+      const menuLoaded = await loadMenu(restaurant.id);
+      if (!menuLoaded) {
         setLoading(false);
         return;
       }
 
-      setItems((menuItems ?? []) as MenuRow[]);
       setLoading(false);
     };
 
     bootstrap();
-  }, [slug, tableId]);
+  }, [slug, tableId, loadMenu]);
+
+  useEffect(() => {
+    if (!restaurantId) return;
+
+    const channel = supabasePublic
+      .channel(`public-table-menu-${restaurantId}`)
+      .on(
+        'postgres_changes',
+        { event: '*', schema: 'public', table: 'menu_items', filter: `restaurant_id=eq.${restaurantId}` },
+        () => {
+          loadMenu(restaurantId);
+        },
+      )
+      .subscribe();
+
+    return () => {
+      supabasePublic.removeChannel(channel);
+    };
+  }, [restaurantId, loadMenu]);
 
   const grouped = useMemo(() => {
     const buckets = new Map<string, MenuRow[]>();

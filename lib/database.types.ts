@@ -147,6 +147,7 @@ export interface Database {
           estado: Database["public"]["Enums"]["estado_orden"];
           metodo_pago: Database["public"]["Enums"]["metodo_pago"] | null;
           pago_confirmado: boolean;
+          paid_at: string | null;
           total: number;
           created_at: string;
           closed_at: string | null;
@@ -159,6 +160,7 @@ export interface Database {
           estado?: Database["public"]["Enums"]["estado_orden"];
           metodo_pago?: Database["public"]["Enums"]["metodo_pago"] | null;
           pago_confirmado?: boolean;
+          paid_at?: string | null;
           total?: number;
           created_at?: string;
           closed_at?: string | null;
@@ -171,6 +173,7 @@ export interface Database {
           estado?: Database["public"]["Enums"]["estado_orden"];
           metodo_pago?: Database["public"]["Enums"]["metodo_pago"] | null;
           pago_confirmado?: boolean;
+          paid_at?: string | null;
           total?: number;
           created_at?: string;
           closed_at?: string | null;
@@ -291,6 +294,38 @@ export interface Database {
           p_items: Json;
         };
         Returns: number;
+      };
+      get_report: {
+        Args: {
+          date_from: string;
+          date_to: string;
+        };
+        Returns: Json;
+      };
+      get_top_items: {
+        Args: {
+          date_from: string;
+          date_to: string;
+          item_limit?: number;
+        };
+        Returns: {
+          menu_item_id: string | null;
+          name: string;
+          total_qty: number;
+          total_revenue: number;
+        }[];
+      };
+      get_waiter_sales: {
+        Args: {
+          date_from: string;
+          date_to: string;
+        };
+        Returns: {
+          mesero_id: string;
+          waiter_name: string;
+          orders_count: number;
+          total_sales: number;
+        }[];
       };
     };
     Enums: {

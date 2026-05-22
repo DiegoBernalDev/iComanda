@@ -215,12 +215,19 @@ export default function PedidoDetailScreen() {
     setUpdatingStatus(true);
     setError('');
 
+    const nextState: { estado: 'entregada' | 'cancelada'; closed_at: string; pago_confirmado?: boolean; paid_at?: string | null } = {
+      estado: pendingStatus,
+      closed_at: new Date().toISOString(),
+    };
+
+    if (pendingStatus === 'entregada' && order.metodo_pago !== 'qr') {
+      nextState.pago_confirmado = true;
+      nextState.paid_at = new Date().toISOString();
+    }
+
     const { error: updateError } = await supabase
       .from('orders')
-      .update({
-        estado: pendingStatus,
-        closed_at: new Date().toISOString(),
-      })
+      .update(nextState)
       .eq('id', id);
 
     if (updateError) {

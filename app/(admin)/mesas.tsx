@@ -35,6 +35,8 @@ import Animated, {
     withTiming,
 } from "react-native-reanimated";
 import { SafeAreaView } from "react-native-safe-area-context";
+import { QrPreviewCard } from '@/components/admin/QrPreviewCard';
+import { getPublicTableUrl } from '@/lib/public-links';
 
 type TableRow = {
   id: string;
@@ -75,6 +77,7 @@ type MesaCardItemProps = {
   onEdit: (mesa: Mesa) => void;
   onToggle: (mesa: Mesa) => void;
   onDelete: (id: string) => void;
+  onOpenQr: (mesa: Mesa) => void;
 };
 
 function MesaCardItem({
@@ -89,6 +92,7 @@ function MesaCardItem({
   onEdit,
   onToggle,
   onDelete,
+  onOpenQr,
 }: MesaCardItemProps) {
   const activeProgress = useSharedValue(mesa.activa ? 1 : 0);
 
@@ -238,6 +242,17 @@ function MesaCardItem({
               </SoftToggle>
             </Pressable>
             <Pressable
+              onPress={() => onOpenQr(mesa)}
+              style={[styles.actionBtn, { borderRadius: shape.full }]}
+              android_ripple={{
+                color: colors.primary + "1F",
+                borderless: true,
+                radius: 18,
+              }}
+            >
+              <Ionicons name="qr-code-outline" size={18} color={colors.primary} />
+            </Pressable>
+            <Pressable
               onPress={() => onDelete(mesa.id)}
               disabled={saving}
               style={[styles.actionBtn, { borderRadius: shape.full }]}
@@ -265,7 +280,9 @@ export default function MesasScreen() {
 
   const [mesas, setMesas] = useState<Mesa[]>([]);
   const [restaurantId, setRestaurantId] = useState<string | null>(null);
+  const [restaurantSlug, setRestaurantSlug] = useState('');
   const [modalVisible, setModalVisible] = useState(false);
+  const [qrMesa, setQrMesa] = useState<Mesa | null>(null);
   const [editando, setEditando] = useState<Mesa | null>(null);
   const [numero, setNumero] = useState("");
   const [capacidad, setCapacidad] = useState("");
@@ -302,6 +319,7 @@ export default function MesasScreen() {
     }
 
     setRestaurantId(restaurant.id);
+    setRestaurantSlug(restaurant.slug);
 
     const { data, error: tablesError } = await supabase
       .from("tables")
@@ -466,6 +484,10 @@ export default function MesasScreen() {
     setSavingId(null);
   };
 
+  const currentTableUrl = qrMesa && restaurantSlug
+    ? getPublicTableUrl(restaurantSlug, qrMesa.id)
+    : '';
+
   return (
     <SafeAreaView style={[s.safe, { backgroundColor: colors.background }]}>
       <TopAppBar
@@ -555,6 +577,7 @@ export default function MesasScreen() {
                 onEdit={abrirEditar}
                 onToggle={toggleActiva}
                 onDelete={eliminar}
+                onOpenQr={setQrMesa}
               />
             ))}
           </View>
@@ -653,6 +676,52 @@ export default function MesasScreen() {
                 onPress={guardar}
                 disabled={saving}
                 style={{ flex: 2 }}
+              />
+            </View>
+          </View>
+        </View>
+      </Modal>
+
+      <Modal visible={!!qrMesa} transparent animationType="slide" onRequestClose={() => setQrMesa(null)}>
+        <View style={s.modalOverlay}>
+          <View
+            style={[
+              s.modalCard,
+              {
+                backgroundColor: colors.surfaceContainerHigh,
+                borderTopLeftRadius: shape.extraLarge,
+                borderTopRightRadius: shape.extraLarge,
+              },
+            ]}
+          >
+            <View
+              style={[
+                s.handle,
+                { backgroundColor: colors.onSurfaceVariant + "40" },
+              ]}
+            />
+            <Text
+              style={[
+                typography.titleLarge,
+                { color: colors.onSurface, marginBottom: 16 },
+              ]}
+            >
+              {qrMesa ? `QR Mesa ${qrMesa.numero}` : 'QR de mesa'}
+            </Text>
+            {currentTableUrl ? (
+              <QrPreviewCard
+                title={`Mesa ${qrMesa?.numero ?? ''}`}
+                subtitle="Este QR inicia la sesión anónima del cliente en esa mesa."
+                targetUrl={currentTableUrl}
+                downloadName={`mesa-${qrMesa?.numero ?? 'qr'}.png`}
+              />
+            ) : null}
+            <View style={s.modalActions}>
+              <Button
+                label="Cerrar"
+                variant="filled"
+                onPress={() => setQrMesa(null)}
+                style={{ flex: 1 }}
               />
             </View>
           </View>

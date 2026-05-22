@@ -7,9 +7,11 @@ import { router } from 'expo-router';
 import * as ImagePicker from 'expo-image-picker';
 import { useMD3Theme } from '@/hooks/use-md3-theme';
 import { TopAppBar, Card, TextField, Button, Surface, Pop, PressScale, Enter } from '@/components/md3';
+import { QrPreviewCard } from '@/components/admin/QrPreviewCard';
 import { Restaurante } from '@/constants/mock';
 import { useAuth } from '@/context/auth';
 import { getAdminRestaurant } from '@/lib/admin';
+import { getPublicMenuUrl } from '@/lib/public-links';
 import { supabase } from '@/lib/supabase';
 
 type RestaurantRow = {
@@ -54,6 +56,8 @@ export default function RestauranteScreen() {
   const [uploadingLogo, setUploadingLogo] = useState(false);
   const [guardado, setGuardado]       = useState(false);
   const [error, setError]             = useState('');
+  const currentSlug = (editando ? form.slug : restaurante.slug).trim();
+  const publicMenuUrl = currentSlug ? getPublicMenuUrl(currentSlug) : '';
 
   const cargarRestaurante = useCallback(async () => {
     setInitialLoading(true);
@@ -282,21 +286,30 @@ export default function RestauranteScreen() {
 
         {/* URL preview */}
         <Enter delay={180}>
-        <Card variant="outlined" style={[s.previewCard, { borderRadius: shape.large }]}>
+        <Card variant="outlined" style={[s.previewCard, { borderRadius: shape.large }]}> 
           <View style={s.previewHeader}>
             <Ionicons name="globe-outline" size={16} color={colors.primary} />
             <Text style={[typography.labelLarge, { color: colors.onSurfaceVariant }]}>URL carta pública</Text>
           </View>
-          <Text style={[typography.bodyMedium, { color: colors.onSurface, fontFamily: Platform.OS === 'ios' ? 'Menlo' : 'monospace', marginTop: 6 }]}>
-            icomanda.app/<Text style={{ color: colors.primary, fontWeight: '700' }}>
-              {(editando ? form.slug : restaurante.slug) || '...'}
-            </Text>
+          <Text style={[typography.bodyMedium, { color: colors.onSurface, fontFamily: Platform.OS === 'ios' ? 'Menlo' : 'monospace', marginTop: 6 }]}> 
+            {publicMenuUrl || 'https://icomanda.app/menu/...'}
           </Text>
-          <Text style={[typography.bodySmall, { color: colors.onSurfaceVariant, marginTop: 4 }]}>
+          <Text style={[typography.bodySmall, { color: colors.onSurfaceVariant, marginTop: 4 }]}> 
             Esta será la dirección pública de la carta.
           </Text>
         </Card>
         </Enter>
+
+        {publicMenuUrl ? (
+          <Enter delay={220}>
+            <QrPreviewCard
+              title="QR de la carta pública"
+              subtitle="Úsalo en la entrada o en mesas para abrir la carta sin login."
+              targetUrl={publicMenuUrl}
+              downloadName={`menu-${currentSlug}.png`}
+            />
+          </Enter>
+        ) : null}
 
       </ScrollView>
       {editando && (

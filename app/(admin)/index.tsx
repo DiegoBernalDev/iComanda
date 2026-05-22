@@ -330,6 +330,22 @@ export default function AdminHome() {
               on: colors.onSecondaryContainer,
               route: "/(admin)/gastos",
             },
+            {
+              icon: "analytics-outline" as const,
+              label: "Reportes",
+              desc: "Finanzas y ventas",
+              bg: colors.tertiaryContainer,
+              on: colors.onTertiaryContainer,
+              route: "/(admin)/reports",
+            },
+            {
+              icon: "cube-outline" as const,
+              label: "Inventario",
+              desc: "Materiales y stock",
+              bg: colors.surfaceVariant,
+              on: colors.onSurfaceVariant,
+              route: "/(admin)/inventario",
+            },
           ].map((m, i) => (
             <Enter key={m.label} delay={150 + i * 70} style={s.moduleCardWrap}>
               <PressScale

@@ -14,8 +14,9 @@ type QrOrder = {
   table_id: string;
   total: number;
   created_at: string;
-  estado: 'activa' | 'entregada' | 'cancelada';
+  estado: 'activa' | 'lista' | 'entregada' | 'cancelada';
   pago_confirmado: boolean;
+  paid_at: string | null;
   tableNumber: number | null;
 };
 
@@ -37,10 +38,10 @@ export default function AdminPagosQrScreen() {
 
     const { data, error: fetchError } = await supabase
       .from('orders')
-      .select('id, table_id, total, created_at, estado, pago_confirmado')
+      .select('id, table_id, total, created_at, estado, pago_confirmado, paid_at')
       .eq('restaurant_id', restaurantId)
       .eq('metodo_pago', 'qr')
-      .eq('estado', 'activa')
+      .neq('estado', 'cancelada')
       .eq('pago_confirmado', false)
       .order('created_at', { ascending: false });
 
@@ -116,7 +117,7 @@ export default function AdminPagosQrScreen() {
 
     const { error: updateError } = await supabase
       .from('orders')
-      .update({ pago_confirmado: true })
+      .update({ pago_confirmado: true, paid_at: new Date().toISOString() })
       .eq('id', orderId);
 
     if (updateError) {
