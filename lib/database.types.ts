@@ -138,6 +138,72 @@ export interface Database {
         };
         Relationships: [];
       };
+      materials: {
+        Row: {
+          id: string;
+          restaurant_id: string;
+          nombre: string;
+          unidad: string;
+          stock_minimo: number;
+          activo: boolean;
+          created_at: string;
+        };
+        Insert: {
+          id?: string;
+          restaurant_id: string;
+          nombre: string;
+          unidad?: string;
+          stock_minimo?: number;
+          activo?: boolean;
+          created_at?: string;
+        };
+        Update: {
+          id?: string;
+          restaurant_id?: string;
+          nombre?: string;
+          unidad?: string;
+          stock_minimo?: number;
+          activo?: boolean;
+          created_at?: string;
+        };
+        Relationships: [];
+      };
+      material_stock_movements: {
+        Row: {
+          id: string;
+          material_id: string;
+          restaurant_id: string;
+          movement_type: Database["public"]["Enums"]["material_movement_type"];
+          quantity: number;
+          reason: string | null;
+          notes: string | null;
+          created_by: string | null;
+          created_at: string;
+        };
+        Insert: {
+          id?: string;
+          material_id: string;
+          restaurant_id: string;
+          movement_type: Database["public"]["Enums"]["material_movement_type"];
+          quantity: number;
+          reason?: string | null;
+          notes?: string | null;
+          created_by?: string | null;
+          created_at?: string;
+        };
+        Update: {
+          id?: string;
+          material_id?: string;
+          restaurant_id?: string;
+          movement_type?: Database["public"]["Enums"]["material_movement_type"];
+          quantity?: number;
+          reason?: string | null;
+          notes?: string | null;
+          created_by?: string | null;
+          created_at?: string;
+        };
+        Relationships: [];
+      };
       orders: {
         Row: {
           id: string;
@@ -329,6 +395,7 @@ export interface Database {
       };
     };
     Enums: {
+      material_movement_type: "consumo" | "reposicion";
       rol_usuario: "mesero" | "admin";
       estado_orden: "activa" | "lista" | "entregada" | "cancelada";
       metodo_pago: "efectivo" | "qr" | "tarjeta";
