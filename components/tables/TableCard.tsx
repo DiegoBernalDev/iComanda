@@ -2,7 +2,7 @@ import { Card, PressScale } from '@/components/md3';
 import { Ionicons } from '@expo/vector-icons';
 import { StyleSheet, Text, View } from 'react-native';
 
-type TableStatus = 'libre' | 'pendiente' | 'listo' | 'entregado' | 'cliente-llama';
+type TableStatus = 'libre' | 'pendiente' | 'listo' | 'pendiente-pago' | 'listo-limpiar' | 'cliente-llama';
 
 export type TableCardModel = {
   id: string;
@@ -27,19 +27,21 @@ const STATUS_META: Record<TableStatus, { label: string; icon: keyof typeof Ionic
   libre: { label: 'Libre', icon: 'checkmark-circle-outline', tone: 'ok' },
   pendiente: { label: 'Pendiente', icon: 'time-outline', tone: 'pending' },
   listo: { label: 'Listo para entregar', icon: 'restaurant-outline', tone: 'ready' },
-  entregado: { label: 'Entregado', icon: 'bag-check-outline', tone: 'done' },
+  'pendiente-pago': { label: 'Pendiente de pago', icon: 'card-outline', tone: 'payment' },
+  'listo-limpiar': { label: 'Listo para limpiar', icon: 'sparkles-outline', tone: 'done' },
   'cliente-llama': { label: 'Cliente llama', icon: 'notifications-outline', tone: 'call' },
 };
 
 export function TableCard({ item, onPress, onMarkAttended, onClearTable, colors, typography, shape }: Props) {
   const meta = STATUS_META[item.status];
   const canMarkAttended = item.status === 'cliente-llama' && !!item.activeCallId;
-  const canClearTable = item.status === 'entregado';
+  const canClearTable = item.status === 'listo-limpiar';
   const statusColors = {
     ok: { bg: colors.tertiaryContainer, fg: colors.onTertiaryContainer },
     pending: { bg: colors.secondaryContainer, fg: colors.onSecondaryContainer },
     ready: { bg: colors.primaryContainer, fg: colors.onPrimaryContainer },
     done: { bg: colors.surfaceVariant, fg: colors.onSurfaceVariant },
+    payment: { bg: colors.secondaryContainer, fg: colors.onSecondaryContainer },
     call: { bg: colors.errorContainer, fg: colors.onErrorContainer },
   } as const;
   const tone = statusColors[meta.tone as keyof typeof statusColors];

@@ -16,6 +16,7 @@ type MaterialRow = {
   stock_minimo: number;
   activo: boolean;
   created_at: string;
+  current_stock: number;
 };
 
 type MovementRow = {
@@ -26,10 +27,6 @@ type MovementRow = {
   reason: string | null;
   notes: string | null;
   created_at: string;
-};
-
-type MaterialWithStock = MaterialRow & {
-  currentStock: number;
 };
 
 const MOVEMENT_REASONS = {
@@ -51,7 +48,7 @@ export default function AdminInventarioScreen() {
 
   const [materialModalVisible, setMaterialModalVisible] = useState(false);
   const [movementModalVisible, setMovementModalVisible] = useState(false);
-  const [selectedMaterial, setSelectedMaterial] = useState<MaterialWithStock | null>(null);
+  const [selectedMaterial, setSelectedMaterial] = useState<MaterialRow | null>(null);
 
   const [materialName, setMaterialName] = useState('');
   const [materialUnit, setMaterialUnit] = useState('unidad');
@@ -67,12 +64,7 @@ export default function AdminInventarioScreen() {
     setError('');
 
     const [{ data: materialData, error: materialError }, { data: movementData, error: movementError }] = await Promise.all([
-      supabase
-        .from('materials')
-        .select('id, nombre, unidad, stock_minimo, activo, created_at')
-        .eq('restaurant_id', restaurantId)
-        .eq('activo', true)
-        .order('nombre', { ascending: true }),
+      supabase.rpc('get_material_stock_snapshot'),
       supabase
         .from('material_stock_movements')
         .select('id, material_id, movement_type, quantity, reason, notes, created_at')
@@ -87,7 +79,7 @@ export default function AdminInventarioScreen() {
       return;
     }
 
-    setMaterials((materialData ?? []) as MaterialRow[]);
+    setMaterials(((materialData ?? []) as MaterialRow[]).filter((material) => material.activo));
     setMovements((movementData ?? []) as MovementRow[]);
     setLoading(false);
   }, [restaurantId]);
@@ -133,23 +125,9 @@ export default function AdminInventarioScreen() {
     };
   }, [restaurantId, loadInventory]);
 
-  const materialsWithStock = useMemo<MaterialWithStock[]>(() => {
-    const stockMap = new Map<string, number>();
-
-    for (const movement of movements) {
-      const signedQuantity = movement.movement_type === 'reposicion' ? movement.quantity : -movement.quantity;
-      stockMap.set(movement.material_id, (stockMap.get(movement.material_id) ?? 0) + signedQuantity);
-    }
-
-    return materials.map((material) => ({
-      ...material,
-      currentStock: stockMap.get(material.id) ?? 0,
-    }));
-  }, [materials, movements]);
-
   const lowStockCount = useMemo(
-    () => materialsWithStock.filter((material) => material.currentStock <= material.stock_minimo).length,
-    [materialsWithStock],
+    () => materials.filter((material) => material.current_stock <= material.stock_minimo).length,
+    [materials],
   );
 
   const openMaterialModal = () => {
@@ -159,7 +137,7 @@ export default function AdminInventarioScreen() {
     setMaterialModalVisible(true);
   };
 
-  const openMovementModal = (material: MaterialWithStock, type: 'consumo' | 'reposicion') => {
+  const openMovementModal = (material: MaterialRow, type: 'consumo' | 'reposicion') => {
     setSelectedMaterial(material);
     setMovementType(type);
     setMovementQuantity('1');
@@ -273,7 +251,7 @@ export default function AdminInventarioScreen() {
 
         <Enter delay={0}>
           <View style={s.chipsRow}>
-            <Chip label={`${materialsWithStock.length} materiales`} selected icon="cube-outline" />
+            <Chip label={`${materials.length} materiales`} selected icon="cube-outline" />
             <Chip label={`${lowStockCount} con stock bajo`} icon="alert-outline" />
           </View>
         </Enter>
@@ -282,13 +260,13 @@ export default function AdminInventarioScreen() {
           <View style={s.loadingBox}>
             <ActivityIndicator color={colors.primary} />
           </View>
-        ) : materialsWithStock.length === 0 ? (
+        ) : materials.length === 0 ? (
           <Card variant="outlined" style={s.emptyCard}>
             <Text style={[typography.bodyMedium, { color: colors.onSurfaceVariant }]}>Aún no registraste materiales físicos.</Text>
           </Card>
         ) : (
-          materialsWithStock.map((material, index) => {
-            const lowStock = material.currentStock <= material.stock_minimo;
+          materials.map((material, index) => {
+            const lowStock = material.current_stock <= material.stock_minimo;
             return (
               <Enter key={material.id} delay={70 + index * 24}>
                 <Card variant="outlined" style={s.materialCard}>
@@ -301,7 +279,7 @@ export default function AdminInventarioScreen() {
                     </View>
                     <View style={[s.stockBadge, { borderRadius: shape.full, backgroundColor: lowStock ? colors.errorContainer : colors.tertiaryContainer }]}>
                       <Text style={[typography.labelLarge, { color: lowStock ? colors.onErrorContainer : colors.onTertiaryContainer }]}>
-                        {material.currentStock} {material.unidad}
+                        {material.current_stock} {material.unidad}
                       </Text>
                     </View>
                   </View>

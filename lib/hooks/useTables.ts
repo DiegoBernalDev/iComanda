@@ -3,7 +3,14 @@ import { supabase } from '@/lib/supabase';
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 
 type ConnectionStatus = 'connected' | 'reconnecting' | 'disconnected';
-type TableStatus = 'libre' | 'pendiente' | 'listo' | 'entregado' | 'cliente-llama';
+type TableStatus = 'libre' | 'pendiente' | 'listo' | 'pendiente-pago' | 'listo-limpiar' | 'cliente-llama';
+
+export type ReadyOrderState = {
+  id: string;
+  tableId: string;
+  tableNumber: number;
+  createdAt: string;
+};
 
 export type TableState = {
   id: string;
@@ -25,6 +32,9 @@ type OrderRow = {
   id: string;
   table_id: string;
   estado: 'activa' | 'lista' | 'entregada' | 'cancelada';
+  metodo_pago: 'efectivo' | 'qr' | 'tarjeta' | null;
+  pago_confirmado: boolean;
+  paid_at: string | null;
   created_at: string;
   closed_at: string | null;
 };
@@ -53,6 +63,7 @@ export function useTables() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
   const [connectionStatus, setConnectionStatus] = useState<ConnectionStatus>('disconnected');
+  const [readyOrders, setReadyOrders] = useState<ReadyOrderState[]>([]);
   const [reconnectNonce, setReconnectNonce] = useState(0);
   const reconnectDelayMs = useRef(1000);
   const reconnectTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
@@ -91,7 +102,7 @@ export function useTables() {
           .order('numero', { ascending: true }),
         supabase
           .from('orders')
-          .select('id, table_id, estado, created_at, closed_at')
+          .select('id, table_id, estado, metodo_pago, pago_confirmado, paid_at, created_at, closed_at')
           .eq('restaurant_id', nextRestaurant.id)
           .eq('mesero_id', user.id)
           .gte('created_at', dayStart.toISOString())
@@ -139,12 +150,15 @@ export function useTables() {
         latestOrder?.estado === 'entregada'
         && !!latestOrder.closed_at
         && (!table.last_cleared_at || latestOrder.closed_at > table.last_cleared_at);
+      const isAwaitingPayment = isDeliveredPendingCleanup && !latestOrder?.pago_confirmado;
+      const isReadyToClean = isDeliveredPendingCleanup && !!latestOrder?.pago_confirmado;
 
       let status: TableStatus = 'libre';
       if (activeCall) status = 'cliente-llama';
       else if (activeOrder?.estado === 'lista') status = 'listo';
       else if (activeOrder?.estado === 'activa') status = 'pendiente';
-      else if (isDeliveredPendingCleanup) status = 'entregado';
+      else if (isAwaitingPayment) status = 'pendiente-pago';
+      else if (isReadyToClean) status = 'listo-limpiar';
 
       return {
         ...table,
@@ -155,6 +169,17 @@ export function useTables() {
     });
 
     setTables(nextTables);
+    setReadyOrders(
+      nextTables
+        .filter((table) => table.status === 'listo' && table.activeOrderId)
+        .map((table) => ({
+          id: table.activeOrderId!,
+          tableId: table.id,
+          tableNumber: table.numero,
+          createdAt: activeByTable.get(table.id)?.created_at ?? '',
+        }))
+        .sort((a, b) => a.createdAt.localeCompare(b.createdAt)),
+    );
     setLoading(false);
   }, [user?.id]);
 
@@ -262,6 +287,8 @@ export function useTables() {
     totalMesas: tables.length,
     libres: tables.filter((table) => table.status === 'libre').length,
     pendientes: tables.filter((table) => table.status === 'pendiente' || table.status === 'listo').length,
+    porCobrar: tables.filter((table) => table.status === 'pendiente-pago').length,
+    listasParaLimpiar: tables.filter((table) => table.status === 'listo-limpiar').length,
   }), [tables]);
 
   return {
@@ -270,6 +297,7 @@ export function useTables() {
     loading,
     error,
     connectionStatus,
+    readyOrders,
     stats,
     refresh: load,
     markCallAttended,

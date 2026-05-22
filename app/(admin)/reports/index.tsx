@@ -1,12 +1,13 @@
 import { Button, Card, Chip, Enter, TopAppBar } from '@/components/md3';
 import { DatePickerField } from '@/components/md3/date-picker-field';
 import { useMD3Theme } from '@/hooks/use-md3-theme';
+import { exportReportAsPdfWeb } from '@/lib/report-export';
 import { ReportPreset, getRangeForPreset } from '@/lib/report-periods';
 import { supabase } from '@/lib/supabase';
 import { Ionicons } from '@expo/vector-icons';
 import { router } from 'expo-router';
 import { useCallback, useEffect, useMemo, useState } from 'react';
-import { ActivityIndicator, ScrollView, StyleSheet, Text, View } from 'react-native';
+import { ActivityIndicator, Platform, ScrollView, StyleSheet, Text, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
 type FinancialReport = {
@@ -131,8 +132,26 @@ export default function AdminReportsScreen() {
             <Enter delay={120}>
               <View style={s.sectionHeader}>
                 <Text style={[typography.titleMedium, { color: colors.onSurface }]}>Ventas por mesero</Text>
-                <Button label="Top platos" variant="tonal" icon="bar-chart-outline" onPress={() => router.push('/(admin)/reports/top-items' as any)} />
+                <View style={s.headerActions}>
+                  <Button
+                    label="PDF"
+                    variant="outlined"
+                    icon="print-outline"
+                    onPress={() => {
+                      try {
+                        exportReportAsPdfWeb(report, waiterSales);
+                      } catch (nextError: any) {
+                        setError(nextError?.message ?? 'No se pudo exportar el reporte.');
+                      }
+                    }}
+                    disabled={Platform.OS !== 'web'}
+                  />
+                  <Button label="Top platos" variant="tonal" icon="bar-chart-outline" onPress={() => router.push('/(admin)/reports/top-items' as any)} />
+                </View>
               </View>
+              {Platform.OS !== 'web' ? (
+                <Text style={[typography.bodySmall, { color: colors.onSurfaceVariant, marginTop: 6 }]}>La exportación PDF está disponible por ahora en web usando imprimir o guardar como PDF.</Text>
+              ) : null}
             </Enter>
 
             {waiterSales.length === 0 ? (
@@ -171,6 +190,7 @@ const makeStyles = (colors: any, shape: any) => StyleSheet.create({
   metricsGrid: { gap: 8 },
   metricCard: { padding: 16, gap: 8, borderWidth: 1 },
   sectionHeader: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', gap: 8, marginTop: 6 },
+  headerActions: { flexDirection: 'row', alignItems: 'center', gap: 8 },
   emptyCard: { padding: 16, marginTop: 6 },
   waiterCard: { padding: 14, marginTop: 8 },
   waiterRow: { flexDirection: 'row', alignItems: 'center', gap: 10 },

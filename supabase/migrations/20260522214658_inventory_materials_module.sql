@@ -53,3 +53,32 @@ begin
     alter publication supabase_realtime add table public.material_stock_movements;
   end if;
 end $$;
+
+create or replace function public.get_material_stock_snapshot()
+returns table(
+  id uuid,
+  restaurant_id uuid,
+  nombre text,
+  unidad text,
+  stock_minimo integer,
+  activo boolean,
+  created_at timestamptz,
+  current_stock bigint
+)
+language sql
+as $$
+  select
+    m.id,
+    m.restaurant_id,
+    m.nombre,
+    m.unidad,
+    m.stock_minimo,
+    m.activo,
+    m.created_at,
+    coalesce(sum(case when msm.movement_type = 'reposicion' then msm.quantity else -msm.quantity end), 0)::bigint as current_stock
+  from public.materials m
+  left join public.material_stock_movements msm on msm.material_id = m.id
+  where m.restaurant_id = get_my_restaurant_id()
+  group by m.id, m.restaurant_id, m.nombre, m.unidad, m.stock_minimo, m.activo, m.created_at
+  order by m.nombre asc;
+$$;

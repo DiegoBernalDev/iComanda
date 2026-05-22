@@ -1,4 +1,4 @@
-import { Card, Counter, Enter, FAB, PressScale } from '@/components/md3';
+import { Card, Chip, Counter, Enter, FAB, PressScale } from '@/components/md3';
 import { TableCard } from '@/components/tables/TableCard';
 import { useAuth } from '@/context/auth';
 import { useMD3Theme } from '@/hooks/use-md3-theme';
@@ -14,7 +14,7 @@ export default function MeseroHome() {
   const { colors, typography, shape } = useMD3Theme();
   const s = useMemo(() => makeStyles(colors, shape), [colors, shape]);
   const { profile, signOut } = useAuth();
-  const { restaurant, tables, loading, error, connectionStatus, stats, markCallAttended, clearTable } = useTables();
+  const { restaurant, tables, loading, error, connectionStatus, readyOrders, stats, markCallAttended, clearTable } = useTables();
 
   return (
     <SafeAreaView style={[s.safe, { backgroundColor: colors.background }]}>
@@ -78,6 +78,29 @@ export default function MeseroHome() {
           </View>
         </Enter>
 
+        <Enter delay={40}>
+          <View style={s.statsRow}>
+            <StatCard
+              colors={colors}
+              typography={typography}
+              shape={shape}
+              icon="card-outline"
+              value={stats.porCobrar}
+              label="Por cobrar"
+              color={colors.error}
+            />
+            <StatCard
+              colors={colors}
+              typography={typography}
+              shape={shape}
+              icon="sparkles-outline"
+              value={stats.listasParaLimpiar}
+              label="Por limpiar"
+              color={colors.tertiary}
+            />
+          </View>
+        </Enter>
+
         <Enter delay={80}>
           <Text style={[typography.titleMedium, s.sectionLabel, { color: colors.onSurface }]}>Acciones</Text>
         </Enter>
@@ -99,6 +122,36 @@ export default function MeseroHome() {
             </Enter>
           ))}
         </View>
+
+        <Enter delay={180}>
+          <View style={s.sectionHeader}>
+            <Text style={[typography.titleMedium, { color: colors.onSurface }]}>Listos para entregar</Text>
+            <Chip label={`${readyOrders.length}`} selected icon="restaurant-outline" />
+          </View>
+        </Enter>
+        {readyOrders.length === 0 ? (
+          <Card variant="outlined" style={s.emptyQueueCard}>
+            <Text style={[typography.bodyMedium, { color: colors.onSurfaceVariant }]}>No hay pedidos listos en este momento.</Text>
+          </Card>
+        ) : (
+          <View style={s.readyQueue}>
+            {readyOrders.map((order, index) => (
+              <Enter key={order.id} delay={200 + index * 20} style={{ width: '100%' }}>
+                <PressScale
+                  onPress={() => router.push({ pathname: '/(mesero)/pedido/[id]', params: { id: order.id } } as any)}
+                  style={[s.readyCard, { backgroundColor: colors.primaryContainer, borderRadius: shape.large }]}
+                  android_ripple={{ color: colors.onPrimaryContainer + '20' }}
+                >
+                  <View style={{ flex: 1 }}>
+                    <Text style={[typography.titleSmall, { color: colors.onPrimaryContainer }]}>Mesa {order.tableNumber}</Text>
+                    <Text style={[typography.bodySmall, { color: colors.onPrimaryContainer + 'CC' }]}>Pedido listo para entregar</Text>
+                  </View>
+                  <Ionicons name="chevron-forward" size={18} color={colors.onPrimaryContainer} />
+                </PressScale>
+              </Enter>
+            ))}
+          </View>
+        )}
 
         <Enter delay={220}>
           <View style={s.sectionHeader}>
@@ -180,6 +233,9 @@ const makeStyles = (colors: any, shape: any) => StyleSheet.create({
   statsRow: { flexDirection: 'row', gap: 8, marginBottom: 20 },
   sectionLabel: { marginBottom: 12 },
   actionsGrid: { flexDirection: 'row', flexWrap: 'wrap', gap: 8, marginBottom: 20 },
+  emptyQueueCard: { padding: 14, marginBottom: 18 },
+  readyQueue: { gap: 8, marginBottom: 20 },
+  readyCard: { padding: 14, flexDirection: 'row', alignItems: 'center', gap: 10 },
   actionCardWrap: { width: '48%' },
   actionCard: { padding: 18, alignItems: 'flex-start' },
   sectionHeader: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 10 },

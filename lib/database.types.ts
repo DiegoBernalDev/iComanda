@@ -147,6 +147,7 @@ export interface Database {
           stock_minimo: number;
           activo: boolean;
           created_at: string;
+          current_stock?: number;
         };
         Insert: {
           id?: string;
@@ -391,6 +392,19 @@ export interface Database {
           waiter_name: string;
           orders_count: number;
           total_sales: number;
+        }[];
+      };
+      get_material_stock_snapshot: {
+        Args: Record<PropertyKey, never>;
+        Returns: {
+          id: string;
+          restaurant_id: string;
+          nombre: string;
+          unidad: string;
+          stock_minimo: number;
+          activo: boolean;
+          created_at: string;
+          current_stock: number;
         }[];
       };
     };
