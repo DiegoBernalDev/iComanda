@@ -112,6 +112,7 @@ export interface Database {
           categoria: string | null;
           imagen_url: string | null;
           disponible: boolean;
+          agotado: boolean;
           created_at: string;
         };
         Insert: {
@@ -123,6 +124,7 @@ export interface Database {
           categoria?: string | null;
           imagen_url?: string | null;
           disponible?: boolean;
+          agotado?: boolean;
           created_at?: string;
         };
         Update: {
@@ -134,6 +136,7 @@ export interface Database {
           categoria?: string | null;
           imagen_url?: string | null;
           disponible?: boolean;
+          agotado?: boolean;
           created_at?: string;
         };
         Relationships: [];
@@ -361,6 +364,39 @@ export interface Database {
           p_items: Json;
         };
         Returns: number;
+      };
+      clear_table_after_payment: {
+        Args: {
+          p_table_id: string;
+        };
+        Returns: void;
+      };
+      set_menu_item_sold_out: {
+        Args: {
+          p_menu_item_id: string;
+          p_agotado: boolean;
+        };
+        Returns: void;
+      };
+      get_waiter_table_state_snapshot: {
+        Args: {
+          p_restaurant_id: string;
+        };
+        Returns: {
+          id: string;
+          numero: number;
+          capacidad: number;
+          activa: boolean;
+          last_cleared_at: string | null;
+          active_order_id: string | null;
+          active_order_owner_id: string | null;
+          active_order_estado: Database["public"]["Enums"]["estado_orden"] | null;
+          active_order_created_at: string | null;
+          latest_delivered_order_id: string | null;
+          latest_delivered_closed_at: string | null;
+          latest_delivered_pago_confirmado: boolean | null;
+          active_call_id: string | null;
+        }[];
       };
       get_report: {
         Args: {
