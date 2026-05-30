@@ -15,6 +15,7 @@ type MenuRow = {
   precio: number;
   categoria: string | null;
   imagen_url: string | null;
+  agotado: boolean;
 };
 
 export default function PublicMenuPage() {
@@ -49,7 +50,7 @@ export default function PublicMenuPage() {
 
       const { data: menuItems, error: menuError } = await supabasePublic
         .from('menu_items')
-        .select('id, nombre, descripcion, precio, categoria, imagen_url')
+        .select('id, nombre, descripcion, precio, categoria, imagen_url, agotado')
         .eq('restaurant_id', restaurant.id)
         .eq('disponible', true)
         .order('categoria', { ascending: true, nullsFirst: false })
@@ -101,7 +102,7 @@ export default function PublicMenuPage() {
             <View key={category} style={s.group}>
               <Text style={[typography.titleMedium, { color: colors.onSurface, marginBottom: 8 }]}>{category}</Text>
               {rows.map((item) => (
-                <Card key={item.id} variant="outlined" style={[s.itemCard, { borderRadius: shape.large, borderColor: colors.outlineVariant }]}>
+                <Card key={item.id} variant="outlined" style={[s.itemCard, { borderRadius: shape.large, borderColor: colors.outlineVariant, opacity: item.agotado ? 0.58 : 1 }]}> 
                   {item.imagen_url ? (
                     <Image source={{ uri: item.imagen_url }} style={s.image} contentFit="cover" />
                   ) : (
@@ -110,7 +111,14 @@ export default function PublicMenuPage() {
                     </View>
                   )}
                   <View style={s.itemBody}>
-                    <Text style={[typography.titleSmall, { color: colors.onSurface }]}>{item.nombre}</Text>
+                    <View style={s.titleRow}>
+                      <Text style={[typography.titleSmall, { color: colors.onSurface, flex: 1 }]}>{item.nombre}</Text>
+                      {item.agotado ? (
+                        <View style={[s.badge, { borderRadius: shape.full, backgroundColor: colors.errorContainer }]}> 
+                          <Text style={[typography.labelSmall, { color: colors.onErrorContainer }]}>Agotado</Text>
+                        </View>
+                      ) : null}
+                    </View>
                     {item.descripcion ? (
                       <Text style={[typography.bodySmall, { color: colors.onSurfaceVariant }]}>{item.descripcion}</Text>
                     ) : null}
@@ -137,5 +145,7 @@ const makeStyles = (colors: any, shape: any) =>
     image: { width: '100%', height: 160 },
     placeholder: { alignItems: 'center', justifyContent: 'center' },
     itemBody: { padding: 12, gap: 6 },
+    titleRow: { flexDirection: 'row', alignItems: 'center', gap: 8 },
+    badge: { paddingHorizontal: 8, paddingVertical: 4 },
   });
 

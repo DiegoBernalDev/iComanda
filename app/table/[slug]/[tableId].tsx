@@ -17,6 +17,7 @@ type MenuRow = {
   categoria: string | null;
   imagen_url: string | null;
   disponible: boolean;
+  agotado: boolean;
 };
 
 export default function TableSessionPage() {
@@ -34,7 +35,8 @@ export default function TableSessionPage() {
   const loadMenu = useCallback(async (nextRestaurantId: string) => {
     const { data: menuItems, error: menuError } = await supabasePublic
       .from('menu_items')
-      .select('id, nombre, descripcion, precio, categoria, imagen_url, disponible')
+      .select('id, nombre, descripcion, precio, categoria, imagen_url, disponible, agotado')
+      .eq('disponible', true)
       .eq('restaurant_id', nextRestaurantId)
       .order('categoria', { ascending: true, nullsFirst: false })
       .order('nombre', { ascending: true });
@@ -180,7 +182,7 @@ export default function TableSessionPage() {
                   variant="outlined"
                   style={[
                     s.itemCard,
-                    { borderRadius: shape.large, borderColor: colors.outlineVariant, opacity: item.disponible ? 1 : 0.55 },
+                    { borderRadius: shape.large, borderColor: colors.outlineVariant, opacity: item.agotado ? 0.55 : 1 },
                   ]}
                 >
                   {item.imagen_url ? (
@@ -193,9 +195,9 @@ export default function TableSessionPage() {
                   <View style={s.itemBody}>
                     <View style={s.titleRow}>
                       <Text style={[typography.titleSmall, { color: colors.onSurface, flex: 1 }]}>{item.nombre}</Text>
-                      {!item.disponible ? (
-                        <View style={[s.badge, { borderRadius: shape.full, backgroundColor: colors.surfaceVariant }]}>
-                          <Text style={[typography.labelSmall, { color: colors.onSurfaceVariant }]}>No disponible</Text>
+                      {item.agotado ? (
+                        <View style={[s.badge, { borderRadius: shape.full, backgroundColor: colors.errorContainer }]}> 
+                          <Text style={[typography.labelSmall, { color: colors.onErrorContainer }]}>Agotado</Text>
                         </View>
                       ) : null}
                     </View>

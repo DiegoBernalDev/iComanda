@@ -28,6 +28,7 @@ type MenuItem = {
   categoria: string | null;
   imagen_url: string | null;
   disponible: boolean;
+  agotado: boolean;
 };
 
 type MenuForm = {
@@ -99,7 +100,7 @@ export default function AdminMenuScreen() {
     const { data, error: fetchError } = await supabase
       .from('menu_items')
       .select(
-        'id, restaurant_id, nombre, descripcion, precio, categoria, imagen_url, disponible',
+        'id, restaurant_id, nombre, descripcion, precio, categoria, imagen_url, disponible, agotado',
       )
       .eq('restaurant_id', restaurant.id)
       .order('categoria', { ascending: true, nullsFirst: false })
@@ -202,7 +203,7 @@ export default function AdminMenuScreen() {
 
     const { data, error: saveError } = await query
       .select(
-        'id, restaurant_id, nombre, descripcion, precio, categoria, imagen_url, disponible',
+        'id, restaurant_id, nombre, descripcion, precio, categoria, imagen_url, disponible, agotado',
       )
       .single();
 
@@ -389,7 +390,7 @@ export default function AdminMenuScreen() {
                         },
                       ]}
                     >
-                      {item.disponible ? 'Disponible' : 'No disponible'}
+                      {item.disponible ? (item.agotado ? 'Agotado' : 'Activo') : 'Desactivado'}
                     </Text>
                   </View>
                 </View>
