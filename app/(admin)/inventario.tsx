@@ -49,6 +49,7 @@ export default function AdminInventarioScreen() {
   const [materialModalVisible, setMaterialModalVisible] = useState(false);
   const [movementModalVisible, setMovementModalVisible] = useState(false);
   const [selectedMaterial, setSelectedMaterial] = useState<MaterialRow | null>(null);
+  const [editingMaterial, setEditingMaterial] = useState<MaterialRow | null>(null);
 
   const [materialName, setMaterialName] = useState('');
   const [materialUnit, setMaterialUnit] = useState('unidad');
@@ -147,10 +148,11 @@ export default function AdminInventarioScreen() {
     [materials],
   );
 
-  const openMaterialModal = () => {
-    setMaterialName('');
-    setMaterialUnit('unidad');
-    setMinimumStock('0');
+  const openMaterialModal = (material?: MaterialRow) => {
+    setEditingMaterial(material ?? null);
+    setMaterialName(material?.nombre ?? '');
+    setMaterialUnit(material?.unidad ?? 'unidad');
+    setMinimumStock(`${material?.stock_minimo ?? 0}`);
     setMaterialModalVisible(true);
   };
 
@@ -163,7 +165,7 @@ export default function AdminInventarioScreen() {
     setMovementModalVisible(true);
   };
 
-  const createMaterial = async () => {
+  const saveMaterial = async () => {
     const trimmedName = materialName.trim();
     const trimmedUnit = materialUnit.trim() || 'unidad';
     const parsedMinimum = Number(minimumStock);
@@ -186,21 +188,52 @@ export default function AdminInventarioScreen() {
     setSaving(true);
     setError('');
 
-    const { error: insertError } = await supabase.from('materials').insert({
-      restaurant_id: restaurantId,
-      nombre: trimmedName,
-      unidad: trimmedUnit,
-      stock_minimo: parsedMinimum,
-    });
+    const { error: saveError } = editingMaterial
+      ? await supabase
+        .from('materials')
+        .update({ nombre: trimmedName, unidad: trimmedUnit, stock_minimo: parsedMinimum })
+        .eq('id', editingMaterial.id)
+        .eq('restaurant_id', restaurantId)
+      : await supabase.from('materials').insert({
+        restaurant_id: restaurantId,
+        nombre: trimmedName,
+        unidad: trimmedUnit,
+        stock_minimo: parsedMinimum,
+      });
 
     setSaving(false);
 
-    if (insertError) {
-      setError(insertError.message);
+    if (saveError) {
+      setError(saveError.message);
       return;
     }
 
     setMaterialModalVisible(false);
+    setEditingMaterial(null);
+    loadInventory();
+  };
+
+  const deactivateMaterial = async () => {
+    if (!editingMaterial || !restaurantId) return;
+
+    setSaving(true);
+    setError('');
+
+    const { error: updateError } = await supabase
+      .from('materials')
+      .update({ activo: false })
+      .eq('id', editingMaterial.id)
+      .eq('restaurant_id', restaurantId);
+
+    setSaving(false);
+
+    if (updateError) {
+      setError(updateError.message);
+      return;
+    }
+
+    setMaterialModalVisible(false);
+    setEditingMaterial(null);
     loadInventory();
   };
 
@@ -249,7 +282,7 @@ export default function AdminInventarioScreen() {
         onBack={() => router.back()}
         trailing={
           <Pressable
-            onPress={openMaterialModal}
+            onPress={() => openMaterialModal()}
             style={[s.addBtn, { borderRadius: shape.medium, backgroundColor: colors.primaryContainer }]}
             android_ripple={{ color: colors.onPrimaryContainer + '30' }}
           >
@@ -304,6 +337,7 @@ export default function AdminInventarioScreen() {
                     <Button label="Consumo" variant="outlined" icon="remove-outline" onPress={() => openMovementModal(material, 'consumo')} style={{ flex: 1 }} />
                     <Button label="Reposición" variant="filled" icon="add-outline" onPress={() => openMovementModal(material, 'reposicion')} style={{ flex: 1 }} />
                   </View>
+                  <Button label="Editar material" variant="tonal" icon="create-outline" onPress={() => openMaterialModal(material)} />
                 </Card>
               </Enter>
             );
@@ -347,7 +381,7 @@ export default function AdminInventarioScreen() {
         <View style={s.modalOverlay}>
           <View style={[s.modalCard, { backgroundColor: colors.surfaceContainerHigh, borderTopLeftRadius: shape.extraLarge, borderTopRightRadius: shape.extraLarge }]}> 
             <View style={[s.handle, { backgroundColor: colors.onSurfaceVariant + '40' }]} />
-            <Text style={[typography.titleLarge, { color: colors.onSurface, marginBottom: 20 }]}>Nuevo material</Text>
+            <Text style={[typography.titleLarge, { color: colors.onSurface, marginBottom: 20 }]}>{editingMaterial ? 'Editar material' : 'Nuevo material'}</Text>
             <TextField label="Nombre" variant="outlined" value={materialName} onChangeText={setMaterialName} leadingIcon="cube-outline" containerColor={colors.surfaceContainerHigh} />
             <View style={{ marginTop: 14 }}>
               <TextField label="Unidad" variant="outlined" value={materialUnit} onChangeText={setMaterialUnit} leadingIcon="layers-outline" containerColor={colors.surfaceContainerHigh} />
@@ -355,9 +389,12 @@ export default function AdminInventarioScreen() {
             <View style={{ marginTop: 14 }}>
               <TextField label="Stock mínimo" variant="outlined" value={minimumStock} onChangeText={setMinimumStock} leadingIcon="alert-outline" keyboardType="numeric" containerColor={colors.surfaceContainerHigh} />
             </View>
+            {editingMaterial ? (
+              <Button label="Desactivar material" variant="outlined" icon="archive-outline" onPress={deactivateMaterial} disabled={saving} style={{ marginTop: 16 }} />
+            ) : null}
             <View style={s.modalActions}>
-              <Button label="Cancelar" variant="text" onPress={() => setMaterialModalVisible(false)} style={{ flex: 1 }} />
-              <Button label={saving ? 'Guardando...' : 'Crear'} variant="filled" icon="checkmark-outline" onPress={createMaterial} disabled={saving} style={{ flex: 1.4 }} />
+              <Button label="Cancelar" variant="text" onPress={() => { setMaterialModalVisible(false); setEditingMaterial(null); }} style={{ flex: 1 }} />
+              <Button label={saving ? 'Guardando...' : editingMaterial ? 'Guardar' : 'Crear'} variant="filled" icon="checkmark-outline" onPress={saveMaterial} disabled={saving} style={{ flex: 1.4 }} />
             </View>
           </View>
         </View>

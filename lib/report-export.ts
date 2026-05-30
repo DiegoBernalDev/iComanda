@@ -14,9 +14,20 @@ type WaiterSalesRow = {
   total_sales: number;
 };
 
+export type PaymentMethodSalesRow = {
+  method: 'efectivo' | 'qr' | 'tarjeta' | 'sin_metodo';
+  label: string;
+  orders_count: number;
+  total_sales: number;
+};
+
 const formatMoney = (value: number) => `Bs ${value.toFixed(2)}`;
 
-export function exportReportAsPdfWeb(report: FinancialReport, waiterSales: WaiterSalesRow[]) {
+export function exportReportAsPdfWeb(
+  report: FinancialReport,
+  waiterSales: WaiterSalesRow[],
+  paymentMethodSales: PaymentMethodSalesRow[] = [],
+) {
   if (Platform.OS !== 'web' || typeof window === 'undefined') {
     throw new Error('La exportación PDF está disponible por ahora solo en web.');
   }
@@ -30,6 +41,20 @@ export function exportReportAsPdfWeb(report: FinancialReport, waiterSales: Waite
       </tr>
     `).join('')
     : '<tr><td colspan="3">No hay ventas pagadas en este periodo.</td></tr>';
+
+  const paymentRows = paymentMethodSales.length
+    ? paymentMethodSales.map((row) => {
+      const percentage = report.gross_income > 0 ? (row.total_sales / report.gross_income) * 100 : 0;
+      return `
+        <tr>
+          <td>${row.label}</td>
+          <td>${row.orders_count}</td>
+          <td>${formatMoney(row.total_sales)}</td>
+          <td>${percentage.toFixed(1)}%</td>
+        </tr>
+      `;
+    }).join('')
+    : '<tr><td colspan="4">No hay ventas pagadas en este periodo.</td></tr>';
 
   const html = `
     <html>
@@ -56,6 +81,13 @@ export function exportReportAsPdfWeb(report: FinancialReport, waiterSales: Waite
           <div class="card"><div class="label">Egresos</div><div class="value">${formatMoney(report.total_expenses)}</div></div>
           <div class="card"><div class="label">Neto</div><div class="value">${formatMoney(report.net_income)}</div></div>
         </div>
+        <h2>Tipos de pago</h2>
+        <table style="margin-bottom: 24px;">
+          <thead>
+            <tr><th>Metodo</th><th>Pedidos</th><th>Total</th><th>Participacion</th></tr>
+          </thead>
+          <tbody>${paymentRows}</tbody>
+        </table>
         <h2>Ventas por mesero</h2>
         <table>
           <thead>

@@ -1,6 +1,7 @@
 import { Button, Card, Enter, TopAppBar } from '@/components/md3';
 import { useAuth } from '@/context/auth';
 import { useMD3Theme } from '@/hooks/use-md3-theme';
+import { exportInternalReceiptWeb } from '@/lib/order-receipt';
 import { supabase } from '@/lib/supabase';
 import { Ionicons } from '@expo/vector-icons';
 import { Image } from 'expo-image';
@@ -9,6 +10,7 @@ import { useCallback, useEffect, useMemo, useState } from 'react';
 import {
     ActivityIndicator,
     Modal,
+    Platform,
     Pressable,
     ScrollView,
     StyleSheet,
@@ -43,6 +45,7 @@ type MenuItem = {
   precio: number;
   categoria: string | null;
   disponible: boolean;
+  agotado: boolean;
 };
 
 type MetodoPago = 'efectivo' | 'qr' | 'tarjeta';
@@ -61,7 +64,9 @@ export default function PedidoDetailScreen() {
   const [order, setOrder] = useState<OrderRow | null>(null);
   const [items, setItems] = useState<OrderItem[]>([]);
   const [menu, setMenu] = useState<MenuItem[]>([]);
+  const [restaurantName, setRestaurantName] = useState('iComanda');
   const [addModalVisible, setAddModalVisible] = useState(false);
+  const [receiptModalVisible, setReceiptModalVisible] = useState(false);
   const [statusModalVisible, setStatusModalVisible] = useState(false);
   const [pendingStatus, setPendingStatus] = useState<'entregada' | 'cancelada' | null>(null);
   const [addCart, setAddCart] = useState<Record<string, number>>({});
@@ -96,20 +101,29 @@ export default function PedidoDetailScreen() {
     }
 
     const rawOrder = orderData as Omit<OrderRow, 'tableNumber'>;
-    const { data: tableData } = await supabase
-      .from('tables')
-      .select('id, numero')
-      .eq('id', rawOrder.table_id)
-      .maybeSingle();
+    const [{ data: tableData }, { data: restaurantData }] = await Promise.all([
+      supabase
+        .from('tables')
+        .select('id, numero')
+        .eq('id', rawOrder.table_id)
+        .maybeSingle(),
+      supabase
+        .from('restaurants')
+        .select('nombre')
+        .eq('id', rawOrder.restaurant_id)
+        .maybeSingle(),
+    ]);
 
     setOrder({ ...rawOrder, tableNumber: tableData?.numero ?? null });
+    setRestaurantName(restaurantData?.nombre ?? 'iComanda');
     setItems((itemData ?? []) as OrderItem[]);
 
     const { data: menuData, error: menuError } = await supabase
       .from('menu_items')
-      .select('id, nombre, precio, categoria, disponible')
+      .select('id, nombre, precio, categoria, disponible, agotado')
       .eq('restaurant_id', rawOrder.restaurant_id)
       .eq('disponible', true)
+      .eq('agotado', false)
       .order('categoria', { ascending: true, nullsFirst: false })
       .order('nombre', { ascending: true });
 
@@ -127,6 +141,7 @@ export default function PedidoDetailScreen() {
       .channel(`mesero-pedido-${id}`)
       .on('postgres_changes', { event: '*', schema: 'public', table: 'orders', filter: `id=eq.${id}` }, () => loadOrder())
       .on('postgres_changes', { event: '*', schema: 'public', table: 'order_items', filter: `order_id=eq.${id}` }, () => loadOrder())
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'menu_items' }, () => loadOrder())
       .subscribe();
 
     return () => {
@@ -243,6 +258,7 @@ export default function PedidoDetailScreen() {
   };
 
   const canManageStatus = !!order && order.estado !== 'entregada' && order.estado !== 'cancelada' && (role === 'mesero' || role === 'admin');
+  const canShowReceipt = !!order && order.estado === 'entregada' && order.pago_confirmado;
   const qrPayload = useMemo(() => {
     if (!order || order.metodo_pago !== 'qr') return '';
     return `ICOMANDA|ORDER:${order.id}|TOTAL:${order.total.toFixed(2)}|TABLE:${order.tableNumber ?? '-'}`;
@@ -337,6 +353,17 @@ export default function PedidoDetailScreen() {
                     style={{ flex: 1 }}
                   />
                 </View>
+              </Enter>
+            ) : null}
+
+            {canShowReceipt ? (
+              <Enter delay={60}>
+                <Button
+                  label="Ver comprobante"
+                  variant="tonal"
+                  icon="document-text-outline"
+                  onPress={() => setReceiptModalVisible(true)}
+                />
               </Enter>
             ) : null}
 
@@ -499,7 +526,85 @@ export default function PedidoDetailScreen() {
           </View>
         </View>
       </Modal>
+
+      <Modal visible={receiptModalVisible} transparent animationType="slide" onRequestClose={() => setReceiptModalVisible(false)}>
+        <View style={s.modalOverlay}>
+          <View
+            style={[
+              s.modalCard,
+              {
+                backgroundColor: colors.surfaceContainerHigh,
+                borderTopLeftRadius: shape.extraLarge,
+                borderTopRightRadius: shape.extraLarge,
+              },
+            ]}
+          >
+            <View style={[s.handle, { backgroundColor: colors.onSurfaceVariant + '40' }]} />
+            <View style={s.receiptHeader}>
+              <View style={{ flex: 1 }}>
+                <Text style={[typography.titleLarge, { color: colors.onSurface }]}>{restaurantName}</Text>
+                <Text style={[typography.bodySmall, { color: colors.onSurfaceVariant }]}>Comprobante interno de consumo</Text>
+              </View>
+              <View style={[s.receiptBadge, { borderColor: colors.outline, borderRadius: shape.medium }]}> 
+                <Text style={[typography.labelSmall, { color: colors.onSurfaceVariant, textAlign: 'center' }]}>NO FISCAL</Text>
+              </View>
+            </View>
+
+            {order ? (
+              <ScrollView style={{ maxHeight: 380 }} showsVerticalScrollIndicator={false}>
+                <View style={s.receiptGrid}>
+                  <ReceiptField label="Nro." value={order.id.slice(0, 8).toUpperCase()} typography={typography} colors={colors} />
+                  <ReceiptField label="Mesa" value={`${order.tableNumber ?? '-'}`} typography={typography} colors={colors} />
+                  <ReceiptField label="Fecha" value={new Date(order.created_at).toLocaleString('es-BO')} typography={typography} colors={colors} />
+                  <ReceiptField label="Pago" value={order.metodo_pago ? PAYMENT_LABELS[order.metodo_pago] : 'Sin método'} typography={typography} colors={colors} />
+                </View>
+
+                {items.map((item) => (
+                  <View key={item.id} style={[s.receiptItem, { borderBottomColor: colors.outlineVariant }]}> 
+                    <View style={{ flex: 1 }}>
+                      <Text style={[typography.titleSmall, { color: colors.onSurface }]}>{item.nombre}</Text>
+                      <Text style={[typography.bodySmall, { color: colors.onSurfaceVariant }]}>{item.cantidad} x Bs {item.precio_unitario.toFixed(2)}</Text>
+                    </View>
+                    <Text style={[typography.titleSmall, { color: colors.primary }]}>Bs {(item.precio_unitario * item.cantidad).toFixed(2)}</Text>
+                  </View>
+                ))}
+
+                <Text style={[typography.headlineSmall, { color: colors.primary, textAlign: 'right', marginTop: 12 }]}>Bs {order.total.toFixed(2)}</Text>
+                <Text style={[typography.bodySmall, { color: colors.onSurfaceVariant, marginTop: 10 }]}>Documento simulado para fines academicos. No tiene validez tributaria.</Text>
+              </ScrollView>
+            ) : null}
+
+            <View style={[s.modalActions, { marginTop: 14 }]}> 
+              <Button label="Cerrar" variant="text" onPress={() => setReceiptModalVisible(false)} style={{ flex: 1 }} />
+              <Button
+                label="Imprimir"
+                variant="filled"
+                icon="print-outline"
+                onPress={() => {
+                  if (!order) return;
+                  try {
+                    exportInternalReceiptWeb(restaurantName, order, items);
+                  } catch (nextError: any) {
+                    setError(nextError?.message ?? 'No se pudo imprimir el comprobante.');
+                  }
+                }}
+                disabled={Platform.OS !== 'web'}
+                style={{ flex: 1 }}
+              />
+            </View>
+          </View>
+        </View>
+      </Modal>
     </SafeAreaView>
+  );
+}
+
+function ReceiptField({ label, value, typography, colors }: { label: string; value: string; typography: any; colors: any }) {
+  return (
+    <View style={{ flex: 1, minWidth: '45%' }}>
+      <Text style={[typography.labelSmall, { color: colors.onSurfaceVariant }]}>{label}</Text>
+      <Text style={[typography.titleSmall, { color: colors.onSurface }]}>{value}</Text>
+    </View>
   );
 }
 
@@ -564,4 +669,8 @@ const makeStyles = (colors: any, shape: any) =>
     modalActions: { flexDirection: 'row', gap: 8 },
     qrCard: { padding: 14, marginBottom: 8, gap: 8 },
     qrImage: { width: 180, height: 180, alignSelf: 'center' },
+    receiptHeader: { flexDirection: 'row', alignItems: 'center', gap: 10, marginBottom: 14 },
+    receiptBadge: { borderWidth: 1, paddingHorizontal: 10, paddingVertical: 8 },
+    receiptGrid: { flexDirection: 'row', flexWrap: 'wrap', gap: 12, marginBottom: 12 },
+    receiptItem: { flexDirection: 'row', alignItems: 'center', gap: 10, paddingVertical: 10, borderBottomWidth: StyleSheet.hairlineWidth },
   });
