@@ -9,12 +9,23 @@ import { ActivityIndicator, Pressable, ScrollView, StyleSheet, Text, View } from
 import { SafeAreaView } from 'react-native-safe-area-context';
 
 type TableRow = { id: string; numero: number; activa: boolean };
+type TableStateRow = {
+  id: string;
+  numero: number;
+  activa: boolean;
+  last_cleared_at: string | null;
+  active_order_id: string | null;
+  active_order_estado: 'activa' | 'lista' | null;
+  latest_delivered_closed_at: string | null;
+  latest_delivered_pago_confirmado: boolean | null;
+};
 type MenuItem = {
   id: string;
   nombre: string;
   precio: number;
   categoria: string | null;
   disponible: boolean;
+  agotado: boolean;
 };
 type MetodoPago = 'efectivo' | 'qr' | 'tarjeta';
 
@@ -66,17 +77,13 @@ export default function NuevoPedidoScreen() {
 
     const [{ data: tablesData, error: tablesError }, { data: menuData, error: menuError }] =
       await Promise.all([
-        supabase
-          .from('tables')
-          .select('id, numero, activa')
-          .eq('restaurant_id', currentRestaurantId)
-          .eq('activa', true)
-          .order('numero', { ascending: true }),
+        supabase.rpc('get_waiter_table_state_snapshot', { p_restaurant_id: currentRestaurantId }),
         supabase
           .from('menu_items')
-          .select('id, nombre, precio, categoria, disponible')
+          .select('id, nombre, precio, categoria, disponible, agotado')
           .eq('restaurant_id', currentRestaurantId)
           .eq('disponible', true)
+          .eq('agotado', false)
           .order('categoria', { ascending: true, nullsFirst: false })
           .order('nombre', { ascending: true }),
       ]);
@@ -87,16 +94,34 @@ export default function NuevoPedidoScreen() {
       return;
     }
 
-    setTables((tablesData ?? []) as TableRow[]);
+    const availableTables = ((tablesData ?? []) as TableStateRow[])
+      .filter((table) => {
+        const pendingCleanup = !!table.latest_delivered_closed_at
+          && (!table.last_cleared_at || table.latest_delivered_closed_at > table.last_cleared_at);
+        return !table.active_order_id && !table.active_order_estado && !pendingCleanup;
+      })
+      .map((table) => ({ id: table.id, numero: table.numero, activa: table.activa }));
+
+    setTables(availableTables);
     setMenu((menuData ?? []) as MenuItem[]);
-    const rows = (tablesData ?? []) as TableRow[];
-    const hasRequestedTable = !!tableId && rows.some((table) => table.id === tableId);
-    setSelectedTableId(hasRequestedTable ? (tableId as string) : rows[0]?.id ?? null);
+    const hasRequestedTable = !!tableId && availableTables.some((table) => table.id === tableId);
+    setSelectedTableId(hasRequestedTable ? (tableId as string) : availableTables[0]?.id ?? null);
     setLoading(false);
   }, [tableId]);
 
   useEffect(() => {
     loadData();
+  }, [loadData]);
+
+  useEffect(() => {
+    const channel = supabase
+      .channel('waiter-new-order-menu-live')
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'menu_items' }, () => loadData())
+      .subscribe();
+
+    return () => {
+      supabase.removeChannel(channel);
+    };
   }, [loadData]);
 
   const cartItems = useMemo(

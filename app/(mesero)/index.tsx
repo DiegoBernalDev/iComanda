@@ -194,6 +194,7 @@ export default function MeseroHome() {
                     router.push({ pathname: '/(mesero)/pedido/[id]', params: { id: table.activeOrderId } } as any);
                     return;
                   }
+                  if (table.status !== 'libre') return;
                   router.push({ pathname: '/(mesero)/pedido-nuevo', params: { tableId: table.id } } as any);
                 }}
                 onMarkAttended={markCallAttended}

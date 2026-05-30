@@ -28,30 +28,20 @@ type RestaurantInfo = {
   logo_url: string | null;
 };
 
-type OrderRow = {
-  id: string;
-  table_id: string;
-  estado: 'activa' | 'lista' | 'entregada' | 'cancelada';
-  metodo_pago: 'efectivo' | 'qr' | 'tarjeta' | null;
-  pago_confirmado: boolean;
-  paid_at: string | null;
-  created_at: string;
-  closed_at: string | null;
-};
-
 type TableRow = {
   id: string;
   numero: number;
   capacidad: number;
   activa: boolean;
   last_cleared_at: string | null;
-};
-
-type TableCallRow = {
-  id: string;
-  table_id: string;
-  atendida: boolean;
-  created_at: string;
+  active_order_id: string | null;
+  active_order_owner_id: string | null;
+  active_order_estado: 'activa' | 'lista' | null;
+  active_order_created_at: string | null;
+  latest_delivered_order_id: string | null;
+  latest_delivered_closed_at: string | null;
+  latest_delivered_pago_confirmado: boolean | null;
+  active_call_id: string | null;
 };
 
 const MAX_RECONNECT_MS = 30_000;
@@ -89,82 +79,38 @@ export function useTables() {
     const nextRestaurant = restaurants[0] as RestaurantInfo;
     setRestaurant(nextRestaurant);
 
-    const dayStart = new Date();
-    dayStart.setHours(0, 0, 0, 0);
+    const { data: tableRows, error: tableError } = await supabase.rpc('get_waiter_table_state_snapshot', {
+      p_restaurant_id: nextRestaurant.id,
+    });
 
-    const [{ data: tableRows, error: tableError }, { data: orders, error: orderError }, { data: calls, error: callError }] =
-      await Promise.all([
-        supabase
-          .from('tables')
-          .select('id, numero, capacidad, activa, last_cleared_at')
-          .eq('restaurant_id', nextRestaurant.id)
-          .eq('activa', true)
-          .order('numero', { ascending: true }),
-        supabase
-          .from('orders')
-          .select('id, table_id, estado, metodo_pago, pago_confirmado, paid_at, created_at, closed_at')
-          .eq('restaurant_id', nextRestaurant.id)
-          .eq('mesero_id', user.id)
-          .gte('created_at', dayStart.toISOString())
-          .order('created_at', { ascending: false }),
-        supabase
-          .from('table_calls')
-          .select('id, table_id, atendida, created_at')
-          .eq('restaurant_id', nextRestaurant.id)
-          .eq('atendida', false)
-          .order('created_at', { ascending: false }),
-      ]);
-
-    if (tableError || orderError || callError) {
-      setError(tableError?.message ?? orderError?.message ?? callError?.message ?? 'No se pudieron cargar las mesas.');
+    if (tableError) {
+      setError(tableError.message ?? 'No se pudieron cargar las mesas.');
       setLoading(false);
       return;
     }
 
     const tableData = (tableRows ?? []) as TableRow[];
-    const orderData = (orders ?? []) as OrderRow[];
-    const callData = (calls ?? []) as TableCallRow[];
-
-    const latestByTable = new Map<string, OrderRow>();
-    for (const order of orderData) {
-      if (!latestByTable.has(order.table_id)) latestByTable.set(order.table_id, order);
-    }
-
-    const activeByTable = new Map<string, OrderRow>();
-    for (const order of orderData) {
-      if (order.estado === 'activa' || order.estado === 'lista') {
-        if (!activeByTable.has(order.table_id)) activeByTable.set(order.table_id, order);
-      }
-    }
-
-    const callByTable = new Map<string, TableCallRow>();
-    for (const call of callData) {
-      if (!callByTable.has(call.table_id)) callByTable.set(call.table_id, call);
-    }
 
     const nextTables: TableState[] = tableData.map((table) => {
-      const activeOrder = activeByTable.get(table.id) ?? null;
-      const latestOrder = latestByTable.get(table.id) ?? null;
-      const activeCall = callByTable.get(table.id) ?? null;
+      const activeOrderId = table.active_order_owner_id === user.id ? table.active_order_id : null;
       const isDeliveredPendingCleanup =
-        latestOrder?.estado === 'entregada'
-        && !!latestOrder.closed_at
-        && (!table.last_cleared_at || latestOrder.closed_at > table.last_cleared_at);
-      const isAwaitingPayment = isDeliveredPendingCleanup && !latestOrder?.pago_confirmado;
-      const isReadyToClean = isDeliveredPendingCleanup && !!latestOrder?.pago_confirmado;
+        !!table.latest_delivered_closed_at
+        && (!table.last_cleared_at || table.latest_delivered_closed_at > table.last_cleared_at);
+      const isAwaitingPayment = isDeliveredPendingCleanup && !table.latest_delivered_pago_confirmado;
+      const isReadyToClean = isDeliveredPendingCleanup && !!table.latest_delivered_pago_confirmado;
 
       let status: TableStatus = 'libre';
-      if (activeCall) status = 'cliente-llama';
-      else if (activeOrder?.estado === 'lista') status = 'listo';
-      else if (activeOrder?.estado === 'activa') status = 'pendiente';
+      if (table.active_call_id) status = 'cliente-llama';
+      else if (table.active_order_estado === 'lista') status = 'listo';
+      else if (table.active_order_estado === 'activa') status = 'pendiente';
       else if (isAwaitingPayment) status = 'pendiente-pago';
       else if (isReadyToClean) status = 'listo-limpiar';
 
       return {
         ...table,
         status,
-        activeOrderId: activeOrder?.id ?? null,
-        activeCallId: activeCall?.id ?? null,
+        activeOrderId,
+        activeCallId: table.active_call_id,
       };
     });
 
@@ -176,7 +122,7 @@ export function useTables() {
           id: table.activeOrderId!,
           tableId: table.id,
           tableNumber: table.numero,
-          createdAt: activeByTable.get(table.id)?.created_at ?? '',
+          createdAt: tableData.find((row) => row.id === table.id)?.active_order_created_at ?? '',
         }))
         .sort((a, b) => a.createdAt.localeCompare(b.createdAt)),
     );
@@ -212,10 +158,10 @@ export function useTables() {
     if (!restaurant?.id || !user?.id) return;
 
     const ordersChannel = supabase
-      .channel(`waiter-orders-${user.id}-${reconnectNonce}`)
+      .channel(`waiter-orders-${restaurant.id}-${user.id}-${reconnectNonce}`)
       .on(
         'postgres_changes',
-        { event: '*', schema: 'public', table: 'orders', filter: `mesero_id=eq.${user.id}` },
+        { event: '*', schema: 'public', table: 'orders', filter: `restaurant_id=eq.${restaurant.id}` },
         () => {
           load();
         },
@@ -232,7 +178,7 @@ export function useTables() {
       });
 
     const callsChannel = supabase
-      .channel(`waiter-table-calls-${user.id}-${reconnectNonce}`)
+      .channel(`waiter-table-calls-${restaurant.id}-${user.id}-${reconnectNonce}`)
       .on(
         'postgres_changes',
         { event: '*', schema: 'public', table: 'table_calls' },
@@ -269,11 +215,9 @@ export function useTables() {
   }, [load]);
 
   const clearTable = useCallback(async (tableId: string) => {
-    const { error: updateError } = await supabase
-      .from('tables')
-      .update({ last_cleared_at: new Date().toISOString() })
-      .eq('id', tableId)
-      .eq('restaurant_id', restaurant?.id ?? '');
+    const { error: updateError } = await supabase.rpc('clear_table_after_payment', {
+      p_table_id: tableId,
+    });
 
     if (updateError) {
       setError(updateError.message);
@@ -281,7 +225,7 @@ export function useTables() {
     }
 
     load();
-  }, [load, restaurant?.id]);
+  }, [load]);
 
   const stats = useMemo(() => ({
     totalMesas: tables.length,

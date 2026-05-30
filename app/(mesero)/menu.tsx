@@ -16,6 +16,7 @@ type MenuItem = {
   categoria: string | null;
   imagen_url: string | null;
   disponible: boolean;
+  agotado: boolean;
 };
 
 export default function MeseroMenuScreen() {
@@ -65,7 +66,7 @@ export default function MeseroMenuScreen() {
 
     const { data, error: fetchError } = await supabase
       .from('menu_items')
-      .select('id, nombre, descripcion, precio, categoria, imagen_url, disponible')
+      .select('id, nombre, descripcion, precio, categoria, imagen_url, disponible, agotado')
       .eq('restaurant_id', restaurantId)
       .eq('disponible', true)
       .order('categoria', { ascending: true, nullsFirst: false })
@@ -79,6 +80,17 @@ export default function MeseroMenuScreen() {
 
   useEffect(() => {
     loadMenu();
+  }, [loadMenu]);
+
+  useEffect(() => {
+    const channel = supabase
+      .channel('waiter-menu-live')
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'menu_items' }, () => loadMenu())
+      .subscribe();
+
+    return () => {
+      supabase.removeChannel(channel);
+    };
   }, [loadMenu]);
 
   return (
@@ -133,7 +145,7 @@ export default function MeseroMenuScreen() {
         ) : (
           filteredItems.map((item, index) => (
             <Enter key={item.id} delay={70 + index * 30}>
-              <Card variant="outlined" style={s.itemCard}>
+              <Card variant="outlined" style={[s.itemCard, { opacity: item.agotado ? 0.58 : 1 }]}> 
                 <View style={s.itemMain}>
                   {item.imagen_url ? (
                     <Image
@@ -157,9 +169,14 @@ export default function MeseroMenuScreen() {
                     </View>
                   )}
                   <View style={s.itemBody}>
-                    <Text style={[typography.titleMedium, { color: colors.onSurface }]}>
-                      {item.nombre}
-                    </Text>
+                    <View style={s.titleRow}>
+                      <Text style={[typography.titleMedium, { color: colors.onSurface, flex: 1 }]}>{item.nombre}</Text>
+                      {item.agotado ? (
+                        <View style={[s.badge, { borderRadius: shape.full, backgroundColor: colors.errorContainer }]}> 
+                          <Text style={[typography.labelSmall, { color: colors.onErrorContainer }]}>Agotado</Text>
+                        </View>
+                      ) : null}
+                    </View>
                     <Text style={[typography.bodySmall, { color: colors.onSurfaceVariant }]}>
                       {item.categoria || 'Sin categoría'} · Bs {item.precio.toFixed(2)}
                     </Text>
@@ -198,4 +215,6 @@ const makeStyles = (colors: any, shape: any) =>
     itemMain: { padding: 12, flexDirection: 'row', gap: 10, alignItems: 'center' },
     itemImage: { width: 56, height: 56 },
     itemBody: { flex: 1, gap: 2 },
+    titleRow: { flexDirection: 'row', alignItems: 'center', gap: 8 },
+    badge: { paddingHorizontal: 8, paddingVertical: 4 },
   });
