@@ -1,0 +1,89 @@
+\chapter{Resumen Ejecutivo}
+
+El proyecto \textbf{iComanda} consiste en el desarrollo de una aplicación móvil
+y web orientada a restaurantes pequeños y medianos que necesitan digitalizar la
+gestión de comandas, mesas, menú, cocina, pagos, gastos, inventario y reportes
+operativos. La solución reemplaza el registro manual en papel por un flujo
+centralizado donde meseros, administradores y cocina trabajan sobre la misma
+información en tiempo real.
+
+El sistema fue construido con \textbf{React Native, Expo Router, TypeScript y
+Supabase}. La aplicación móvil permite operar desde dispositivos Android, mientras
+que las rutas públicas web permiten que los clientes consulten la carta digital
+desde un navegador mediante códigos QR, sin instalar una aplicación ni crear una
+cuenta tradicional.
+
+\section{Problema Abordado}
+
+En muchos restaurantes pequeños y medianos, los pedidos todavía se registran en
+papel o mediante mensajes informales entre meseros y cocina. Esto produce errores
+en los totales, pérdida de comandas, dificultad para conocer el estado real de una
+mesa y poca visibilidad financiera al final del turno. Además, la administración
+no cuenta con información inmediata sobre ventas, gastos, platos más vendidos o
+disponibilidad de insumos.
+
+iComanda aborda esta necesidad mediante una plataforma que integra operación diaria
+y control administrativo. El mesero registra pedidos desde el celular, cocina ve
+las órdenes pendientes y las marca como listas, el administrador gestiona menú,
+usuarios, mesas, pagos QR, gastos, inventario y reportes, y el cliente puede ver
+la carta o llamar al mesero desde la mesa.
+
+\section{Solución Implementada}
+
+La solución implementada incluye los siguientes módulos principales:
+
+\begin{itemize}[leftmargin=1.5em]
+  \item \textbf{Autenticación y roles:} acceso diferenciado para \texttt{admin},
+        \texttt{mesero} y \texttt{chef} mediante Supabase Auth y perfiles en la
+        tabla \texttt{profiles}.
+  \item \textbf{Gestión de mesas:} administración de mesas, capacidad, estado
+        activo y generación de enlaces QR por mesa.
+  \item \textbf{Gestión de menú:} creación, edición, disponibilidad, imágenes y
+        marcado de platos agotados.
+  \item \textbf{Toma de pedidos:} registro de órdenes con mesa, ítems, cantidades,
+        método de pago y cálculo automático del total.
+  \item \textbf{Cocina:} panel para que el rol \texttt{chef} visualice pedidos en
+        preparación y marque órdenes como \texttt{lista}.
+  \item \textbf{Tiempo real:} actualización de pedidos, mesas, llamadas del cliente
+        y disponibilidad mediante Supabase Realtime.
+  \item \textbf{Carta digital pública:} menú accesible desde navegador por ruta
+        \texttt{/menu/[slug]}.
+  \item \textbf{Vista pública de cliente en mesa:} ruta \texttt{/table/[slug]/[tableId]}
+        para ver el menú y llamar al mesero desde el QR de mesa, sin crear cuenta.
+  \item \textbf{Pagos:} soporte para efectivo, QR y tarjeta, con confirmación de
+        pagos QR y registro de \texttt{paid\_at} para reportes.
+  \item \textbf{Gastos e inventario:} registro de egresos, materiales, reposiciones,
+        consumos y control básico de stock.
+  \item \textbf{Reportes:} métricas financieras, ranking de platos vendidos y ventas
+        por mesero.
+\end{itemize}
+
+\section{Arquitectura Técnica}
+
+El proyecto utiliza una arquitectura \textbf{Backend as a Service (BaaS)}. La
+aplicación cliente consume directamente los servicios de Supabase, evitando la
+necesidad de implementar un backend intermedio propio.
+
+\begin{itemize}[leftmargin=1.5em]
+  \item \textbf{Frontend móvil y web:} React Native, Expo SDK 54, Expo Router 6.
+  \item \textbf{Lenguaje:} TypeScript.
+  \item \textbf{Backend administrado:} Supabase con PostgreSQL, Auth, Storage,
+        Realtime, funciones SQL y políticas RLS.
+  \item \textbf{Diseño de interfaz:} componentes propios inspirados en Material
+        Design 3.
+  \item \textbf{Control de versiones:} Git y GitHub, usando ramas auxiliares de
+        desarrollo que se integraron a la rama principal y luego se eliminaron.
+\end{itemize}
+
+\section{Metodología y Resultado General}
+
+El desarrollo se organizó bajo una metodología ágil basada en Scrum, dividido en
+\textbf{3 sprints de 2 semanas}. Cada sprint entregó incrementos funcionales:
+fundación técnica y autenticación, operación de pedidos y administración, y
+funcionalidades finales de tiempo real, carta digital, cocina, inventario y
+reportes.
+
+Como resultado, se obtuvo una solución funcional que centraliza la operación de un
+restaurante en una sola plataforma, mejora la trazabilidad de pedidos y pagos,
+reduce errores del registro manual y proporciona información útil para la toma de
+decisiones administrativas.

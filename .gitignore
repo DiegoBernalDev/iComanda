@@ -42,3 +42,10 @@ app-example
 # generated native folders
 /ios
 /android
+
+# LaTeX build artifacts
+report/*.aux
+report/*.log
+report/*.out
+report/*.toc
+report/main.pdf

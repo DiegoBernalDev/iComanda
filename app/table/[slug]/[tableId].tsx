@@ -85,25 +85,6 @@ export default function TableSessionPage() {
       setRestaurantName(restaurant.nombre ?? '');
       setTableNumber(table.numero ?? null);
 
-      const { data: authState } = await supabasePublic.auth.getSession();
-      const current = authState.session?.user?.user_metadata as Record<string, string> | undefined;
-      const needsSession =
-        !authState.session ||
-        current?.role !== 'customer' ||
-        current?.table_id !== tableId ||
-        current?.restaurant_slug !== slug;
-
-      if (needsSession) {
-        const { error: signInError } = await supabasePublic.auth.signInAnonymously({
-          options: { data: { role: 'customer', table_id: tableId, restaurant_slug: slug } },
-        });
-        if (signInError) {
-          setError(signInError.message);
-          setLoading(false);
-          return;
-        }
-      }
-
       const menuLoaded = await loadMenu(restaurant.id);
       if (!menuLoaded) {
         setLoading(false);

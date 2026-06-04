@@ -1,0 +1,70 @@
+\chapter{Conclusiones}
+
+El desarrollo de \textbf{iComanda} permitió construir una solución funcional para
+modernizar la operación de restaurantes pequeños y medianos. El proyecto logró
+centralizar procesos que normalmente se manejan de forma manual, como la toma de
+pedidos, el seguimiento de mesas, la comunicación con cocina, la confirmación de
+pagos, el registro de gastos, el control básico de inventario y la generación de
+reportes administrativos.
+
+La arquitectura basada en \textbf{Supabase como Backend as a Service} resultó adecuada
+para el alcance del proyecto, ya que permitió utilizar PostgreSQL, Auth, Storage,
+Realtime, políticas RLS y funciones RPC sin desarrollar un servidor propio. Esta
+decisión redujo la complejidad de infraestructura y permitió enfocar el esfuerzo en
+la experiencia móvil, las reglas de negocio y la integración entre roles.
+
+La aplicación implementa tres roles internos principales: \texttt{admin},
+\texttt{mesero} y \texttt{chef}. El administrador gestiona la configuración del
+restaurante, usuarios, mesas, menú, pagos, gastos, inventario y reportes. El mesero
+opera pedidos y mesas durante el servicio. El chef visualiza pedidos activos, marca
+órdenes listas y controla platos agotados. Además, los clientes pueden acceder a la
+carta digital y a la sesión de mesa mediante QR, sin instalar una aplicación.
+
+El trabajo con Scrum en \textbf{3 sprints de 2 semanas} ayudó a ordenar el desarrollo
+en incrementos: primero la base técnica y autenticación, luego la operación principal
+de pedidos y administración, y finalmente los módulos complementarios de tiempo real,
+cocina, inventario, carta digital y reportes. Esta división permitió avanzar de forma
+iterativa y cerrar una versión funcional para la entrega final.
+
+\section{Alcance Logrado}
+
+\begin{itemize}[leftmargin=1.5em]
+  \item Registro y seguimiento de órdenes con estados \texttt{activa}, \texttt{lista},
+        \texttt{entregada} y \texttt{cancelada}.
+  \item Gestión administrativa de usuarios, restaurante, mesas y menú.
+  \item Flujo de cocina con rol \texttt{chef} y marcado de platos agotados.
+  \item Carta digital pública y sesión de cliente por mesa mediante QR.
+  \item Llamada del cliente al mesero mediante registros en \texttt{table\_calls}.
+  \item Confirmación de pagos QR y registro de fecha efectiva de pago.
+  \item Registro de gastos, reportes financieros, ranking de platos y ventas por mesero.
+  \item Módulo de inventario con materiales, reposiciones, consumos y stock bajo.
+\end{itemize}
+
+\section{Limitaciones Identificadas}
+
+\begin{itemize}[leftmargin=1.5em]
+  \item La verificación de pagos QR todavía es manual; no existe integración con una
+        pasarela bancaria o billetera digital.
+  \item El cliente puede consultar menú y llamar al mesero, pero no crea órdenes
+        directamente desde la mesa.
+  \item El sistema depende de conectividad para operar en tiempo real; no se implementó
+        un modo offline completo.
+  \item Las pruebas realizadas se plantean principalmente como manuales y exploratorias;
+        queda pendiente incorporar pruebas automatizadas.
+  \item El uso del plan gratuito de Supabase puede generar pausas por inactividad y
+        límites de recursos si se despliega en producción real.
+\end{itemize}
+
+\section{Recomendaciones}
+
+\begin{itemize}[leftmargin=1.5em]
+  \item Integrar pagos automáticos con una pasarela compatible con el contexto local.
+  \item Añadir pruebas automatizadas con Jest y pruebas end-to-end para flujos críticos.
+  \item Implementar caché local para permitir operación parcial sin conexión.
+  \item Mejorar el módulo de inventario con alertas, historial avanzado y proyección
+        de consumo.
+  \item Preparar un despliegue productivo con monitoreo de errores, backups y un plan
+        de Supabase que evite pausas automáticas.
+  \item Mantener actualizada la documentación del esquema de base de datos, políticas
+        RLS y decisiones de arquitectura conforme evolucione el sistema.
+\end{itemize}

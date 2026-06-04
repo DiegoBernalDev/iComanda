@@ -201,10 +201,9 @@ export function useTables() {
   useEffect(() => () => clearReconnect(), [clearReconnect]);
 
   const markCallAttended = useCallback(async (callId: string) => {
-    const { error: updateError } = await supabase
-      .from('table_calls')
-      .update({ atendida: true, atendida_at: new Date().toISOString() })
-      .eq('id', callId);
+    const { error: updateError } = await supabase.rpc('mark_table_call_attended', {
+      p_call_id: callId,
+    });
 
     if (updateError) {
       setError(updateError.message);

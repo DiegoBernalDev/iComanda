@@ -443,6 +443,12 @@ export interface Database {
           current_stock: number;
         }[];
       };
+      mark_table_call_attended: {
+        Args: {
+          p_call_id: string;
+        };
+        Returns: void;
+      };
     };
     Enums: {
       material_movement_type: "consumo" | "reposicion";

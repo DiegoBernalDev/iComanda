@@ -1,0 +1,301 @@
+\chapter{Diseño del Proyecto}
+
+\section{Stack Tecnológico}
+
+\begin{longtable}{>{\bfseries}p{3cm} p{4cm} p{5.5cm}}
+  \toprule
+  \textbf{Capa} & \textbf{Tecnología} & \textbf{Justificación} \\
+  \midrule
+  \endhead
+  Mobile y Web & React Native + Expo SDK 54 & Permite una misma base de código para Android y rutas web públicas. \\[3pt]
+  Navegación & Expo Router 6 & Ruteo basado en archivos con grupos por rol y rutas públicas. \\[3pt]
+  Lenguaje & TypeScript & Tipado estático para reducir errores durante el desarrollo. \\[3pt]
+  Backend & Supabase & PostgreSQL, Auth, Storage, Realtime y funciones SQL administradas. \\[3pt]
+  Base de datos & PostgreSQL & Modelo relacional, integridad referencial, constraints, triggers y RPC. \\[3pt]
+  Autenticación & Supabase Auth + \texttt{profiles} & Sesiones seguras y perfiles propios con roles \texttt{admin}, \texttt{mesero} y \texttt{chef}. \\[3pt]
+  Seguridad & Row Level Security & Restricción de acceso a datos según rol y usuario autenticado. \\[3pt]
+  Almacenamiento & Supabase Storage & Imágenes del menú y logo del restaurante mediante URLs públicas. \\[3pt]
+  Tiempo real & Supabase Realtime & Sincronización de órdenes, mesas, llamadas e inventario. \\[3pt]
+  Reportes & Funciones PostgreSQL/RPC & Cálculos server-side para ventas, egresos, ranking y ventas por mesero. \\[3pt]
+  UI & Componentes MD3 propios & Interfaz consistente para admin, mesero y chef. \\[3pt]
+  Versiones & Git + GitHub & Historial de cambios, ramas auxiliares y respaldo del repositorio. \\
+  \bottomrule
+  \caption{Stack tecnológico real del sistema}
+\end{longtable}
+
+\section{Modelo de Datos}
+
+\subsection{Entidades y Relaciones}
+
+El sistema utiliza una base de datos PostgreSQL administrada por Supabase. El
+modelo se organiza alrededor de restaurantes, usuarios/perfiles, mesas, menú,
+órdenes, gastos, llamadas de mesa e inventario.
+
+\begin{figure}[H]
+    \centering
+    \includegraphics[width=0.95\textwidth]{img/erd_database.png}
+    \caption{Modelo entidad-relación de la base de datos del sistema iComanda}
+    \label{fig:erd_database}
+\end{figure}
+
+\begin{notabox}
+El archivo \texttt{report/erd\_mermaid.md} contiene el diagrama ER en formato
+Mermaid para regenerar la imagen \texttt{img/erd\_database.png} cuando se actualice
+el modelo.
+\end{notabox}
+
+\clearpage
+
+\subsection{Esquema de Tablas Reales}
+
+\noindent\textbf{\texttt{profiles}}
+
+\begin{tabular}{lll}
+  \toprule
+  \textbf{Campo} & \textbf{Tipo} & \textbf{Descripción} \\
+  \midrule
+  \texttt{id} & uuid & PK, referencia a \texttt{auth.users} \\
+  \texttt{nombre} & text & Nombre del usuario \\
+  \texttt{email} & text & Correo electrónico \\
+  \texttt{rol} & enum & \texttt{mesero | admin | chef} \\
+  \texttt{activo} & boolean & Indica si el usuario puede ingresar \\
+  \texttt{created\_at} & timestamptz & Fecha de creación \\
+  \bottomrule
+\end{tabular}
+
+\vspace{8pt}
+\noindent\textbf{\texttt{restaurants}}
+
+\begin{tabular}{lll}
+  \toprule
+  \textbf{Campo} & \textbf{Tipo} & \textbf{Descripción} \\
+  \midrule
+  \texttt{id} & uuid & PK \\
+  \texttt{nombre} & text & Nombre del restaurante \\
+  \texttt{slug} & text UNIQUE & Identificador usado en URLs públicas \\
+  \texttt{direccion} & text & Dirección del restaurante \\
+  \texttt{telefono} & text & Teléfono de contacto \\
+  \texttt{logo\_url} & text & Logo público del restaurante \\
+  \texttt{owner\_id} & uuid FK & Administrador responsable \\
+  \texttt{created\_at} & timestamptz & Fecha de creación \\
+  \bottomrule
+\end{tabular}
+
+\vspace{8pt}
+\noindent\textbf{\texttt{tables}}
+
+\begin{tabular}{lll}
+  \toprule
+  \textbf{Campo} & \textbf{Tipo} & \textbf{Descripción} \\
+  \midrule
+  \texttt{id} & uuid & PK \\
+  \texttt{restaurant\_id} & uuid FK & Restaurante al que pertenece \\
+  \texttt{numero} & integer & Número de mesa \\
+  \texttt{capacidad} & integer & Capacidad aproximada \\
+  \texttt{activa} & boolean & Estado activo/inactivo \\
+  \texttt{last\_cleared\_at} & timestamptz & Última limpieza/liberación de mesa \\
+  \texttt{created\_at} & timestamptz & Fecha de creación \\
+  \bottomrule
+\end{tabular}
+
+\vspace{8pt}
+\noindent\textbf{\texttt{menu\_items}}
+
+\begin{tabular}{lll}
+  \toprule
+  \textbf{Campo} & \textbf{Tipo} & \textbf{Descripción} \\
+  \midrule
+  \texttt{id} & uuid & PK \\
+  \texttt{restaurant\_id} & uuid FK & Restaurante propietario \\
+  \texttt{nombre} & text & Nombre del plato \\
+  \texttt{descripcion} & text & Descripción del plato \\
+  \texttt{precio} & numeric(10,2) & Precio actual \\
+  \texttt{categoria} & text & Categoría del menú \\
+  \texttt{imagen\_url} & text & Imagen del plato \\
+  \texttt{disponible} & boolean & Visible/disponible para venta \\
+  \texttt{agotado} & boolean & Marcado temporal de cocina \\
+  \texttt{created\_at} & timestamptz & Fecha de creación \\
+  \bottomrule
+\end{tabular}
+
+\vspace{8pt}
+\noindent\textbf{\texttt{orders}}
+
+\begin{tabular}{lll}
+  \toprule
+  \textbf{Campo} & \textbf{Tipo} & \textbf{Descripción} \\
+  \midrule
+  \texttt{id} & uuid & PK \\
+  \texttt{restaurant\_id} & uuid FK & Restaurante asociado \\
+  \texttt{table\_id} & uuid FK & Mesa asociada \\
+  \texttt{mesero\_id} & uuid FK & Mesero que abrió la orden \\
+  \texttt{estado} & enum & \texttt{activa | lista | entregada | cancelada} \\
+  \texttt{metodo\_pago} & enum & \texttt{efectivo | qr | tarjeta} \\
+  \texttt{pago\_confirmado} & boolean & Confirmación final del pago \\
+  \texttt{paid\_at} & timestamptz & Fecha efectiva de pago \\
+  \texttt{total} & numeric(10,2) & Total de la orden \\
+  \texttt{created\_at} & timestamptz & Fecha de apertura \\
+  \texttt{closed\_at} & timestamptz & Fecha de cierre \\
+  \bottomrule
+\end{tabular}
+
+\vspace{8pt}
+\noindent\textbf{\texttt{order\_items}}
+
+\begin{tabular}{lll}
+  \toprule
+  \textbf{Campo} & \textbf{Tipo} & \textbf{Descripción} \\
+  \midrule
+  \texttt{id} & uuid & PK \\
+  \texttt{order\_id} & uuid FK & Orden padre \\
+  \texttt{menu\_item\_id} & uuid FK & Plato original, puede quedar nulo \\
+  \texttt{nombre} & text & Snapshot del nombre del plato \\
+  \texttt{precio\_unitario} & numeric(10,2) & Snapshot del precio \\
+  \texttt{cantidad} & integer & Cantidad solicitada \\
+  \texttt{created\_at} & timestamptz & Fecha de registro \\
+  \bottomrule
+\end{tabular}
+
+\vspace{8pt}
+\noindent\textbf{\texttt{expenses}}
+
+\begin{tabular}{lll}
+  \toprule
+  \textbf{Campo} & \textbf{Tipo} & \textbf{Descripción} \\
+  \midrule
+  \texttt{id} & uuid & PK \\
+  \texttt{restaurant\_id} & uuid FK & Restaurante asociado \\
+  \texttt{descripcion} & text & Descripción del gasto \\
+  \texttt{monto} & numeric(10,2) & Monto del gasto \\
+  \texttt{fecha} & date & Fecha contable \\
+  \texttt{created\_by} & uuid FK & Usuario que lo registró \\
+  \texttt{created\_at} & timestamptz & Fecha de creación \\
+  \bottomrule
+\end{tabular}
+
+\vspace{8pt}
+\noindent\textbf{\texttt{table\_calls}}
+
+\begin{tabular}{lll}
+  \toprule
+  \textbf{Campo} & \textbf{Tipo} & \textbf{Descripción} \\
+  \midrule
+  \texttt{id} & uuid & PK \\
+  \texttt{table\_id} & uuid FK & Mesa que solicita atención \\
+  \texttt{restaurant\_id} & uuid FK & Restaurante asociado \\
+  \texttt{atendida} & boolean & Indica si fue atendida \\
+  \texttt{atendida\_at} & timestamptz & Momento de atención \\
+  \texttt{created\_at} & timestamptz & Momento de llamada \\
+  \bottomrule
+\end{tabular}
+
+\vspace{8pt}
+\noindent\textbf{\texttt{materials}}
+
+\begin{tabular}{lll}
+  \toprule
+  \textbf{Campo} & \textbf{Tipo} & \textbf{Descripción} \\
+  \midrule
+  \texttt{id} & uuid & PK \\
+  \texttt{restaurant\_id} & uuid FK & Restaurante asociado \\
+  \texttt{nombre} & text & Nombre del material o insumo \\
+  \texttt{unidad} & text & Unidad de medida \\
+  \texttt{stock\_minimo} & numeric & Umbral mínimo \\
+  \texttt{activo} & boolean & Estado activo/inactivo \\
+  \texttt{created\_at} & timestamptz & Fecha de creación \\
+  \bottomrule
+\end{tabular}
+
+\vspace{8pt}
+\noindent\textbf{\texttt{material\_stock\_movements}}
+
+\begin{tabular}{lll}
+  \toprule
+  \textbf{Campo} & \textbf{Tipo} & \textbf{Descripción} \\
+  \midrule
+  \texttt{id} & uuid & PK \\
+  \texttt{material\_id} & uuid FK & Material afectado \\
+  \texttt{restaurant\_id} & uuid FK & Restaurante asociado \\
+  \texttt{movement\_type} & enum & \texttt{consumo | reposicion} \\
+  \texttt{quantity} & numeric & Cantidad movida \\
+  \texttt{reason} & text & Motivo del movimiento \\
+  \texttt{notes} & text & Notas adicionales \\
+  \texttt{created\_by} & uuid FK & Usuario que registró el movimiento \\
+  \texttt{created\_at} & timestamptz & Fecha del movimiento \\
+  \bottomrule
+\end{tabular}
+
+\section{Estructura del Proyecto}
+
+La estructura real del repositorio sigue las convenciones de Expo Router:
+
+\begin{Verbatim}[fontsize=\small, frame=single, framesep=3mm]
+iComanda/
+|-- app/
+|   |-- login.tsx
+|   |-- _layout.tsx
+|   |-- (admin)/       index, usuarios, mesas, restaurante, menu,
+|   |                  pagos-qr, gastos, inventario, reports
+|   |-- (mesero)/      index, menu, pedidos, pedido-nuevo, pedido/[id]
+|   |-- (chef)/        index
+|   |-- menu/[slug].tsx
+|   \-- table/[slug]/[tableId].tsx
+|-- components/
+|   |-- admin/
+|   |-- customer/
+|   |-- md3/
+|   \-- tables/
+|-- context/auth.tsx
+|-- lib/
+|   |-- supabase.ts
+|   |-- supabase-public.ts
+|   |-- database.types.ts
+|   |-- admin.ts
+|   |-- order-receipt.ts
+|   \-- hooks/useTables.ts
+|-- supabase/
+|   |-- migrations/
+|   \-- functions/crear-usuario/
+|-- report/
+|-- app.json
+|-- package.json
+\-- tsconfig.json
+\end{Verbatim}
+
+\section{Roles y Accesos}
+
+\begin{longtable}{p{6cm} ccc}
+  \toprule
+  \textbf{Funcionalidad} & \textbf{Mesero} & \textbf{Admin} & \textbf{Chef} \\
+  \midrule
+  \endhead
+  Ver menú disponible & \checkmark & \checkmark & \checkmark \\
+  Crear pedidos & \checkmark & --- & --- \\
+  Ver pedidos activos & \checkmark & \checkmark & \checkmark \\
+  Marcar pedido como listo & --- & --- & \checkmark \\
+  Marcar pedido entregado/cancelado & \checkmark & \checkmark & --- \\
+  Vista de mesas en tiempo real & \checkmark & --- & --- \\
+  Atender llamada de cliente & \checkmark & --- & --- \\
+  Gestionar menú & --- & \checkmark & --- \\
+  Marcar plato agotado & --- & --- & \checkmark \\
+  Gestionar mesas y restaurante & --- & \checkmark & --- \\
+  Gestionar usuarios & --- & \checkmark & --- \\
+  Confirmar pagos QR & --- & \checkmark & --- \\
+  Registrar gastos & --- & \checkmark & --- \\
+  Gestionar inventario & --- & \checkmark & --- \\
+  Ver reportes & --- & \checkmark & --- \\
+  \bottomrule
+  \caption{Matriz real de roles y accesos del sistema}
+\end{longtable}
+
+\section{Rutas Públicas del Cliente}
+
+Además de los roles autenticados, el sistema expone rutas públicas para clientes:
+
+\begin{itemize}[leftmargin=1.5em]
+  \item \texttt{/menu/[slug]}: carta digital pública del restaurante. Ejemplo local validado: \texttt{/menu/jimmy}.
+  \item \texttt{/table/[slug]/[tableId]}: vista pública de mesa para ver menú y llamar al mesero. Ejemplo local validado: \texttt{/table/jimmy/b3383250-5517-4772-8bda-549bf27d44e1}.
+\end{itemize}
+
+Estas rutas no requieren una cuenta del cliente y están protegidas por políticas
+RLS y consultas limitadas al restaurante/mesa correspondiente.

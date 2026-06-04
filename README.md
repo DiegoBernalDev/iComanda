@@ -1,50 +1,118 @@
-# Welcome to your Expo app 👋
+# iComanda
 
-This is an [Expo](https://expo.dev) project created with [`create-expo-app`](https://www.npmjs.com/package/create-expo-app).
+iComanda es una aplicación móvil y web para la gestión operativa de restaurantes.
+Permite administrar mesas, menú, pedidos, cocina, pagos, gastos, inventario y
+reportes usando React Native, Expo y Supabase.
 
-## Get started
+## Tecnologías
 
-1. Install dependencies
+- React Native + Expo SDK 54
+- Expo Router 6
+- TypeScript
+- Supabase Auth, PostgreSQL, Storage y Realtime
+- PostgreSQL functions/RPC y Row Level Security
+- Componentes UI propios inspirados en Material Design 3
 
-   ```bash
-   npm install
-   ```
+## Roles
 
-2. Start the app
+- `admin`: gestiona usuarios, restaurante, mesas, menú, pagos QR, gastos, inventario y reportes.
+- `mesero`: visualiza mesas, registra pedidos, entrega/cancela órdenes y atiende llamadas de clientes.
+- `chef`: visualiza pedidos de cocina, marca pedidos listos y gestiona platos agotados.
+- Cliente público: accede a la carta y sesión de mesa por QR sin instalar app.
 
-   ```bash
-   npx expo start
-   ```
+## Módulos Principales
 
-In the output, you'll find options to open the app in a
+- Login y control de acceso por rol.
+- Gestión de usuarios, restaurante y mesas.
+- Menú con imágenes, categorías, disponibilidad y platos agotados.
+- Toma de pedidos y seguimiento de órdenes.
+- Panel de cocina en tiempo real.
+- Carta digital pública por URL/QR.
+- Sesión de cliente por mesa con llamada al mesero.
+- Confirmación de pagos QR.
+- Gastos operativos e inventario de materiales.
+- Reportes financieros, ranking de platos y ventas por mesero.
 
-- [development build](https://docs.expo.dev/develop/development-builds/introduction/)
-- [Android emulator](https://docs.expo.dev/workflow/android-studio-emulator/)
-- [iOS simulator](https://docs.expo.dev/workflow/ios-simulator/)
-- [Expo Go](https://expo.dev/go), a limited sandbox for trying out app development with Expo
+## Estructura Relevante
 
-You can start developing by editing the files inside the **app** directory. This project uses [file-based routing](https://docs.expo.dev/router/introduction).
-
-## Get a fresh project
-
-When you're ready, run:
-
-```bash
-npm run reset-project
+```text
+app/
+  login.tsx
+  (admin)/
+  (mesero)/
+  (chef)/
+  menu/[slug].tsx
+  table/[slug]/[tableId].tsx
+components/
+context/auth.tsx
+lib/
+supabase/migrations/
+supabase/functions/crear-usuario/
+report/
 ```
 
-This command will move the starter code to the **app-example** directory and create a blank **app** directory where you can start developing.
+## Requisitos
 
-## Learn more
+- Node.js instalado.
+- npm instalado.
+- Proyecto Supabase configurado.
+- Variables de entorno públicas de Supabase.
 
-To learn more about developing your project with Expo, look at the following resources:
+## Variables de Entorno
 
-- [Expo documentation](https://docs.expo.dev/): Learn fundamentals, or go into advanced topics with our [guides](https://docs.expo.dev/guides).
-- [Learn Expo tutorial](https://docs.expo.dev/tutorial/introduction/): Follow a step-by-step tutorial where you'll create a project that runs on Android, iOS, and the web.
+Crea un archivo `.env` en la raíz del proyecto con:
 
-## Join the community
+```env
+EXPO_PUBLIC_SUPABASE_URL=tu_url_de_supabase
+EXPO_PUBLIC_SUPABASE_ANON_KEY=tu_anon_key
+```
 
-Join our community of developers creating universal apps.
+No se debe subir `.env` al repositorio.
 
-- [Expo on GitHub](https://github.com/expo/expo): View our open source platform and contribute.
-- [Discord community](https://chat.expo.dev): Chat with Expo users and ask questions.
+## Instalación
+
+```bash
+npm install
+```
+
+## Ejecutar en Desarrollo
+
+```bash
+npm run start
+```
+
+Para Android:
+
+```bash
+npm run android
+```
+
+Para web:
+
+```bash
+npm run web
+```
+
+## Verificación
+
+```bash
+npm run lint
+```
+
+## Informe
+
+El informe final se encuentra en `report/`.
+
+Archivos relevantes:
+
+- `report/main.tex`: documento principal.
+- `report/erd_mermaid.md`: diagrama ER en Mermaid para regenerar `report/img/erd_database.png`.
+- `report/referencias.bib`: referencias bibliográficas en formato BibTeX.
+
+Para compilar manualmente el informe desde `report/`:
+
+```bash
+pdflatex -interaction=nonstopmode main.tex
+```
+
+Se recomienda compilar dos veces para actualizar índice y referencias.
