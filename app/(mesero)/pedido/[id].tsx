@@ -23,6 +23,7 @@ type OrderRow = {
   id: string;
   restaurant_id: string;
   table_id: string;
+  mesero_id: string;
   estado: 'activa' | 'lista' | 'entregada' | 'cancelada';
   metodo_pago: 'efectivo' | 'qr' | 'tarjeta' | null;
   pago_confirmado: boolean;
@@ -57,7 +58,7 @@ const PAYMENT_LABELS: Record<MetodoPago, string> = {
 
 export default function PedidoDetailScreen() {
   const { id } = useLocalSearchParams<{ id: string }>();
-  const { role } = useAuth();
+  const { role, user } = useAuth();
   const { colors, typography, shape } = useMD3Theme();
   const s = useMemo(() => makeStyles(colors, shape), [colors, shape]);
 
@@ -73,6 +74,7 @@ export default function PedidoDetailScreen() {
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
   const [updatingStatus, setUpdatingStatus] = useState(false);
+  const [updatingPayment, setUpdatingPayment] = useState(false);
   const [error, setError] = useState('');
 
   const loadOrder = useCallback(async () => {
@@ -84,9 +86,9 @@ export default function PedidoDetailScreen() {
       await Promise.all([
         supabase
           .from('orders')
-          .select('id, restaurant_id, estado, metodo_pago, pago_confirmado, total, created_at, table_id')
+          .select('id, restaurant_id, mesero_id, estado, metodo_pago, pago_confirmado, total, created_at, table_id')
           .eq('id', id)
-          .single(),
+          .maybeSingle(),
         supabase
           .from('order_items')
           .select('id, menu_item_id, nombre, precio_unitario, cantidad')
@@ -94,7 +96,7 @@ export default function PedidoDetailScreen() {
           .order('created_at', { ascending: true }),
       ]);
 
-    if (orderError || itemError) {
+    if (orderError || itemError || !orderData) {
       setError(orderError?.message ?? itemError?.message ?? 'No se pudo cargar el pedido.');
       setLoading(false);
       return;
@@ -226,19 +228,29 @@ export default function PedidoDetailScreen() {
   };
 
   const confirmStatusChange = async () => {
-    if (!id || !pendingStatus || !order || (order.estado !== 'activa' && order.estado !== 'lista')) return;
+    if (!id || !pendingStatus || !order || order.estado === 'cancelada') return;
     setUpdatingStatus(true);
     setError('');
+
+    if (pendingStatus === 'entregada') {
+      const deliveredAt = new Date().toISOString();
+      const { error: itemsUpdateError } = await supabase
+        .from('order_items')
+        .update({ delivered_at: deliveredAt } as any)
+        .eq('order_id', id)
+        .is('delivered_at', null);
+
+      if (itemsUpdateError) {
+        setError(itemsUpdateError.message);
+        setUpdatingStatus(false);
+        return;
+      }
+    }
 
     const nextState: { estado: 'entregada' | 'cancelada'; closed_at: string; pago_confirmado?: boolean; paid_at?: string | null } = {
       estado: pendingStatus,
       closed_at: new Date().toISOString(),
     };
-
-    if (pendingStatus === 'entregada' && order.metodo_pago !== 'qr') {
-      nextState.pago_confirmado = true;
-      nextState.paid_at = new Date().toISOString();
-    }
 
     const { error: updateError } = await supabase
       .from('orders')
@@ -257,8 +269,34 @@ export default function PedidoDetailScreen() {
     loadOrder();
   };
 
-  const canManageStatus = !!order && order.estado !== 'entregada' && order.estado !== 'cancelada' && (role === 'mesero' || role === 'admin');
+  const confirmPayment = async () => {
+    if (!id || !order) return;
+    setUpdatingPayment(true);
+    setError('');
+
+    const { error: updateError } = await supabase
+      .from('orders')
+      .update({
+        pago_confirmado: true,
+        paid_at: new Date().toISOString(),
+      })
+      .eq('id', id);
+
+    if (updateError) {
+      setError(updateError.message);
+      setUpdatingPayment(false);
+      return;
+    }
+
+    setUpdatingPayment(false);
+    loadOrder();
+  };
+
+  const canManageStatus = !!order && (order.estado === 'activa' || order.estado === 'lista') && (role === 'mesero' || role === 'admin');
+  const canConfirmPayment = !!order && order.estado === 'entregada' && !order.pago_confirmado && order.metodo_pago !== 'qr' && (role === 'mesero' || role === 'admin');
   const canShowReceipt = !!order && order.estado === 'entregada' && order.pago_confirmado;
+  const isForeignWaiterOrder = !!order && !!user?.id && order.mesero_id !== user.id;
+  const canAddItems = !!order && order.estado !== 'cancelada' && !order.pago_confirmado;
   const qrPayload = useMemo(() => {
     if (!order || order.metodo_pago !== 'qr') return '';
     return `ICOMANDA|ORDER:${order.id}|TOTAL:${order.total.toFixed(2)}|TABLE:${order.tableNumber ?? '-'}`;
@@ -298,7 +336,13 @@ export default function PedidoDetailScreen() {
           <>
             <Enter delay={0}>
               <Card variant="filled" style={s.summaryCard}>
-                <Text style={[typography.titleMedium, { color: colors.onSurface }]}>
+                {isForeignWaiterOrder ? (
+                  <View style={[s.collabBanner, { backgroundColor: colors.secondaryContainer, borderRadius: shape.small }]}>
+                    <Ionicons name="people-outline" size={14} color={colors.onSecondaryContainer} />
+                    <Text style={[typography.bodySmall, { color: colors.onSecondaryContainer, flex: 1 }]}>Este pedido le pertenece a otro mesero, pero puedes colaborar sin cambiar su propietario.</Text>
+                  </View>
+                ) : null}
+                <Text style={[typography.titleMedium, { color: colors.onSurface }]}> 
                   Mesa {order.tableNumber ?? '-'}
                 </Text>
                 <Text style={[typography.bodySmall, { color: colors.onSurfaceVariant }]}>
@@ -307,9 +351,11 @@ export default function PedidoDetailScreen() {
                 <Text style={[typography.bodySmall, { color: colors.onSurfaceVariant }]}>
                   Pago: {order.metodo_pago ? PAYMENT_LABELS[order.metodo_pago] : 'Sin método'}
                 </Text>
-                {order.metodo_pago === 'qr' ? (
+                {order.metodo_pago ? (
                   <Text style={[typography.bodySmall, { color: order.pago_confirmado ? colors.tertiary : colors.error }]}>
-                    {order.pago_confirmado ? 'Pago QR confirmado' : 'Pago QR pendiente'}
+                    {order.pago_confirmado
+                      ? `Pago ${PAYMENT_LABELS[order.metodo_pago]} confirmado`
+                      : `Pago ${PAYMENT_LABELS[order.metodo_pago]} pendiente`}
                   </Text>
                 ) : null}
                 <Text style={[typography.bodySmall, { color: colors.onSurfaceVariant }]}>
@@ -356,6 +402,19 @@ export default function PedidoDetailScreen() {
               </Enter>
             ) : null}
 
+            {canConfirmPayment ? (
+              <Enter delay={57}>
+                <Button
+                  label={updatingPayment ? 'Procesando...' : 'Marcar como pagado'}
+                  variant="filled"
+                  icon="cash-outline"
+                  onPress={confirmPayment}
+                  disabled={updatingPayment}
+                  style={{ marginBottom: 10 }}
+                />
+              </Enter>
+            ) : null}
+
             {canShowReceipt ? (
               <Enter delay={60}>
                 <Button
@@ -375,7 +434,7 @@ export default function PedidoDetailScreen() {
                   variant="tonal"
                   icon="add"
                   onPress={() => setAddModalVisible(true)}
-                  disabled={order.estado === 'entregada' || order.estado === 'cancelada'}
+                  disabled={!canAddItems}
                 />
               </View>
             </Enter>
@@ -621,6 +680,7 @@ const makeStyles = (colors: any, shape: any) =>
     },
     loadingBox: { paddingVertical: 28 },
     summaryCard: { padding: 16, marginBottom: 14 },
+    collabBanner: { flexDirection: 'row', alignItems: 'center', gap: 6, padding: 10, marginBottom: 12 },
     sectionRow: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' },
     statusActions: { flexDirection: 'row', gap: 8, marginBottom: 10 },
     emptyCard: { marginTop: 12, padding: 16 },

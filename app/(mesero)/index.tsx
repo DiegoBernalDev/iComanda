@@ -6,7 +6,7 @@ import { useTables } from '@/lib/hooks/useTables';
 import { Ionicons } from '@expo/vector-icons';
 import { Image } from 'expo-image';
 import { router } from 'expo-router';
-import { useMemo } from 'react';
+import { useMemo, useState } from 'react';
 import { ActivityIndicator, Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
@@ -15,6 +15,7 @@ export default function MeseroHome() {
   const s = useMemo(() => makeStyles(colors, shape), [colors, shape]);
   const { profile, signOut } = useAuth();
   const { restaurant, tables, loading, error, connectionStatus, readyOrders, stats, markCallAttended, clearTable } = useTables();
+  const [interactionError, setInteractionError] = useState('');
 
   return (
     <SafeAreaView style={[s.safe, { backgroundColor: colors.background }]}>
@@ -169,10 +170,10 @@ export default function MeseroHome() {
           </View>
         </Enter>
 
-        {error ? (
-          <View style={[s.errorBanner, { backgroundColor: colors.errorContainer, borderRadius: shape.medium }]}>
+        {error || interactionError ? (
+          <View style={[s.errorBanner, { backgroundColor: colors.errorContainer, borderRadius: shape.medium }]}> 
             <Ionicons name="alert-circle-outline" size={16} color={colors.onErrorContainer} />
-            <Text style={[typography.bodySmall, { color: colors.onErrorContainer, flex: 1 }]}>{error}</Text>
+            <Text style={[typography.bodySmall, { color: colors.onErrorContainer, flex: 1 }]}>{error || interactionError}</Text>
           </View>
         ) : null}
 
@@ -190,8 +191,17 @@ export default function MeseroHome() {
                 typography={typography}
                 shape={shape}
                 onPress={() => {
+                  setInteractionError('');
                   if (table.activeOrderId) {
                     router.push({ pathname: '/(mesero)/pedido/[id]', params: { id: table.activeOrderId } } as any);
+                    return;
+                  }
+                  if ((table.status === 'pendiente-pago' || table.status === 'listo-limpiar') && table.latestDeliveredOrderId) {
+                    router.push({ pathname: '/(mesero)/pedido/[id]', params: { id: table.latestDeliveredOrderId } } as any);
+                    return;
+                  }
+                  if (table.status === 'pendiente' || table.status === 'listo') {
+                    setInteractionError('Esta mesa tiene un pedido activo. Puedes entrar para ayudar y el pedido seguirá perteneciendo al mesero original.');
                     return;
                   }
                   if (table.status !== 'libre') return;

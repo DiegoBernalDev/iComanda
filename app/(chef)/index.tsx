@@ -66,7 +66,7 @@ export default function ChefDashboardScreen() {
         ? supabase.from('tables').select('id, numero').in('id', tableIds)
         : Promise.resolve({ data: [] }),
       orderIds.length
-        ? supabase.from('order_items').select('id, order_id, nombre, cantidad').in('order_id', orderIds).order('created_at', { ascending: true })
+        ? supabase.from('order_items').select('id, order_id, nombre, cantidad, delivered_at').in('order_id', orderIds).is('delivered_at', null).order('created_at', { ascending: true })
         : Promise.resolve({ data: [], error: null }),
     ]);
 
@@ -80,17 +80,21 @@ export default function ChefDashboardScreen() {
     const tableMap = new Map<string, number>((tablesData ?? []).map((table) => [table.id, table.numero]));
     const itemsByOrder = new Map<string, { id: string; nombre: string; cantidad: number }[]>();
 
-    for (const item of (itemsData ?? []) as { id: string; order_id: string; nombre: string; cantidad: number }[]) {
+    for (const item of (itemsData ?? []) as { id: string; order_id: string; nombre: string; cantidad: number; delivered_at: string | null }[]) {
       const bucket = itemsByOrder.get(item.order_id) ?? [];
       bucket.push({ id: item.id, nombre: item.nombre, cantidad: item.cantidad });
       itemsByOrder.set(item.order_id, bucket);
     }
 
-    setOrders(rawOrders.map((order) => ({
-      ...order,
-      tableNumber: tableMap.get(order.table_id) ?? null,
-      items: itemsByOrder.get(order.id) ?? [],
-    })));
+    setOrders(
+      rawOrders
+        .map((order) => ({
+          ...order,
+          tableNumber: tableMap.get(order.table_id) ?? null,
+          items: itemsByOrder.get(order.id) ?? [],
+        }))
+        .filter((order) => order.items.length > 0),
+    );
     setLoading(false);
     setRefreshing(false);
   }, []);

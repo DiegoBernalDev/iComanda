@@ -19,6 +19,7 @@ export type TableState = {
   activa: boolean;
   status: TableStatus;
   activeOrderId: string | null;
+  latestDeliveredOrderId: string | null;
   activeCallId: string | null;
 };
 
@@ -92,7 +93,7 @@ export function useTables() {
     const tableData = (tableRows ?? []) as TableRow[];
 
     const nextTables: TableState[] = tableData.map((table) => {
-      const activeOrderId = table.active_order_owner_id === user.id ? table.active_order_id : null;
+      const activeOrderId = table.active_order_id;
       const isDeliveredPendingCleanup =
         !!table.latest_delivered_closed_at
         && (!table.last_cleared_at || table.latest_delivered_closed_at > table.last_cleared_at);
@@ -110,6 +111,7 @@ export function useTables() {
         ...table,
         status,
         activeOrderId,
+        latestDeliveredOrderId: table.latest_delivered_order_id,
         activeCallId: table.active_call_id,
       };
     });

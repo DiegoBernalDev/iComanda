@@ -261,6 +261,7 @@ export interface Database {
           nombre: string;
           precio_unitario: number;
           cantidad: number;
+          delivered_at: string | null;
           created_at: string;
         };
         Insert: {
@@ -270,6 +271,7 @@ export interface Database {
           nombre: string;
           precio_unitario: number;
           cantidad?: number;
+          delivered_at?: string | null;
           created_at?: string;
         };
         Update: {
@@ -279,6 +281,7 @@ export interface Database {
           nombre?: string;
           precio_unitario?: number;
           cantidad?: number;
+          delivered_at?: string | null;
           created_at?: string;
         };
         Relationships: [];
