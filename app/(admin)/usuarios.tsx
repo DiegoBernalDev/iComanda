@@ -45,6 +45,8 @@ const toUsuario = (profile: ProfileRow): Usuario => ({
   creadoEn: profile.created_at.slice(0, 10),
 });
 
+type UserFilter = "all" | "active" | "inactive";
+
 export default function UsuariosScreen() {
   const { colors, typography, shape } = useMD3Theme();
   const s = useMemo(() => makeStyles(colors, shape), [colors, shape]);
@@ -56,10 +58,24 @@ export default function UsuariosScreen() {
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [rol, setRol] = useState<Role>("mesero");
+  const [filter, setFilter] = useState<UserFilter>("all");
   const [initialLoading, setInitialLoading] = useState(true);
   const [loading, setLoading] = useState(false);
   const [savingId, setSavingId] = useState<string | null>(null);
   const [error, setError] = useState("");
+
+  const filteredUsers = useMemo(() => {
+    if (filter === "active") return usuarios.filter((u) => u.activo);
+    if (filter === "inactive") return usuarios.filter((u) => !u.activo);
+    return usuarios;
+  }, [filter, usuarios]);
+
+  const filteredLabel =
+    filter === "active"
+      ? "activos"
+      : filter === "inactive"
+        ? "inactivos"
+        : "usuarios";
 
   const cargarUsuarios = useCallback(async () => {
     setInitialLoading(true);
@@ -244,17 +260,34 @@ export default function UsuariosScreen() {
         {/* Summary chips */}
         <Enter delay={0}>
           <View style={s.chips}>
-            <Chip label={`${usuarios.length} total`} icon="people-outline" />
             <Chip
-              label={`${usuarios.filter((u) => u.activo).length} activos`}
-              icon="checkmark-circle-outline"
-              selected
+              label="Todos"
+              icon="people-outline"
+              variant="filter"
+              selected={filter === "all"}
+              onPress={() => setFilter("all")}
             />
             <Chip
-              label={`${usuarios.filter((u) => !u.activo).length} inactivos`}
+              label="Activos"
+              icon="checkmark-circle-outline"
+              variant="filter"
+              selected={filter === "active"}
+              onPress={() => setFilter("active")}
+            />
+            <Chip
+              label="Inactivos"
               icon="close-circle-outline"
+              variant="filter"
+              selected={filter === "inactive"}
+              onPress={() => setFilter("inactive")}
             />
           </View>
+        </Enter>
+
+        <Enter delay={20}>
+          <Text style={[typography.bodyMedium, { color: colors.onSurfaceVariant, marginBottom: 8 }]}>
+            {filteredUsers.length} {filteredLabel}
+          </Text>
         </Enter>
 
         {/* Lista */}
@@ -263,7 +296,7 @@ export default function UsuariosScreen() {
             <ActivityIndicator color={colors.primary} />
           </View>
         ) : (
-          usuarios.map((u, i) => {
+          filteredUsers.map((u, i) => {
             const isCurrentUser = u.id === user?.id;
             const isSelfBlockDisabled = isCurrentUser && u.activo;
 
