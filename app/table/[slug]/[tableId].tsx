@@ -70,13 +70,12 @@ export default function TableSessionPage() {
 
       const { data: table, error: tableError } = await supabasePublic
         .from('tables')
-        .select('id, numero')
+        .select('*')
         .eq('id', tableId)
         .eq('restaurant_id', restaurant.id)
-        .eq('deprecated', false)
         .maybeSingle();
 
-      if (tableError || !table) {
+      if (tableError || !table || table.deprecated) {
         setError('Mesa o restaurante no válido.');
         setLoading(false);
         return;

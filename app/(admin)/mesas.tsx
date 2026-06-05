@@ -45,7 +45,7 @@ type TableRow = {
   numero: number;
   capacidad: number;
   activa: boolean;
-  deprecated: boolean;
+  deprecated?: boolean;
 };
 
 const toMesa = (table: TableRow): Mesa => ({
@@ -326,13 +326,12 @@ export default function MesasScreen() {
 
     const { data, error: tablesError } = await supabase
       .from("tables")
-      .select("id, restaurant_id, numero, capacidad, activa, deprecated")
+      .select("*")
       .eq("restaurant_id", restaurant.id)
-      .eq("deprecated", false)
       .order("numero", { ascending: true });
 
     if (tablesError) setError(tablesError.message);
-    else setMesas((data ?? []).map((table) => toMesa(table)));
+    else setMesas(((data ?? []) as TableRow[]).filter((table) => !table.deprecated).map((table) => toMesa(table)));
 
     setInitialLoading(false);
   }, [user?.id]);
@@ -416,7 +415,7 @@ export default function MesasScreen() {
         .from("tables")
         .update({ numero: numeroMesa, capacidad: capacidadMesa })
         .eq("id", editando.id)
-        .select("id, restaurant_id, numero, capacidad, activa, deprecated")
+        .select("*")
         .single();
 
       if (updateError) setError(updateError.message);
@@ -432,9 +431,8 @@ export default function MesasScreen() {
           numero: numeroMesa,
           capacidad: capacidadMesa,
           activa: true,
-          deprecated: false,
         })
-        .select("id, restaurant_id, numero, capacidad, activa, deprecated")
+        .select("*")
         .single();
 
       if (insertError) {
