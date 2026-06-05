@@ -35,6 +35,8 @@ const MOVEMENT_REASONS = {
   reposicion: ['Compra', 'Reposición manual'],
 } as const;
 
+const MOVEMENTS_PAGE_SIZE = 20;
+
 export default function AdminInventarioScreen() {
   const { colors, typography, shape } = useMD3Theme();
   const s = useMemo(() => makeStyles(colors, shape), [colors, shape]);
@@ -59,6 +61,7 @@ export default function AdminInventarioScreen() {
   const [movementQuantity, setMovementQuantity] = useState('1');
   const [movementReason, setMovementReason] = useState('');
   const [movementNotes, setMovementNotes] = useState('');
+  const [visibleMovementCount, setVisibleMovementCount] = useState(MOVEMENTS_PAGE_SIZE);
 
   const loadInventory = useCallback(async () => {
     if (!restaurantId) return;
@@ -100,6 +103,7 @@ export default function AdminInventarioScreen() {
       })),
     );
     setMovements(movementRows);
+    setVisibleMovementCount(MOVEMENTS_PAGE_SIZE);
     setLoading(false);
   }, [restaurantId]);
 
@@ -148,6 +152,17 @@ export default function AdminInventarioScreen() {
     () => materials.filter((material) => material.current_stock <= material.stock_minimo).length,
     [materials],
   );
+
+  const visibleMovements = useMemo(
+    () => movements.slice(0, visibleMovementCount),
+    [movements, visibleMovementCount],
+  );
+
+  const canLoadMoreMovements = visibleMovementCount < movements.length;
+
+  const loadMoreMovements = () => {
+    setVisibleMovementCount((prev) => Math.min(prev + MOVEMENTS_PAGE_SIZE, movements.length));
+  };
 
   const openMaterialModal = (material?: MaterialRow) => {
     setEditingMaterial(material ?? null);
@@ -354,7 +369,7 @@ export default function AdminInventarioScreen() {
             <Text style={[typography.bodyMedium, { color: colors.onSurfaceVariant }]}>Todavía no hay movimientos registrados.</Text>
           </Card>
         ) : (
-          movements.map((movement, index) => {
+          visibleMovements.map((movement, index) => {
             const material = materials.find((item) => item.id === movement.material_id);
             const isIncoming = movement.movement_type === 'reposicion';
             return (
@@ -377,6 +392,15 @@ export default function AdminInventarioScreen() {
             );
           })
         )}
+        {canLoadMoreMovements ? (
+          <Button
+            label={`Ver más (${movements.length - visibleMovements.length} restantes)`}
+            variant="outlined"
+            icon="chevron-down-outline"
+            onPress={loadMoreMovements}
+            style={{ marginTop: 8 }}
+          />
+        ) : null}
       </ScrollView>
 
       <Modal visible={materialModalVisible} transparent animationType="slide" onRequestClose={() => setMaterialModalVisible(false)}>
