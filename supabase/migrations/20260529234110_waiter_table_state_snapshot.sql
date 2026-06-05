@@ -63,6 +63,7 @@ as $$
   ) table_call on true
   where t.restaurant_id = p_restaurant_id
     and t.activa = true
+    and coalesce(t.deprecated, false) = false
     and public.get_my_role() in ('admin', 'mesero')
   order by t.numero asc;
 $$;

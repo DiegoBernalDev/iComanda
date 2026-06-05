@@ -45,6 +45,7 @@ type TableRow = {
   numero: number;
   capacidad: number;
   activa: boolean;
+  deprecated: boolean;
 };
 
 const toMesa = (table: TableRow): Mesa => ({
@@ -77,7 +78,7 @@ type MesaCardItemProps = {
   styles: ReturnType<typeof makeStyles>;
   onEdit: (mesa: Mesa) => void;
   onToggle: (mesa: Mesa) => void;
-  onDelete: (id: string) => void;
+  onDelete: (mesa: Mesa) => void;
   onOpenQr: (mesa: Mesa) => void;
 };
 
@@ -254,7 +255,7 @@ function MesaCardItem({
               <Ionicons name="qr-code-outline" size={18} color={colors.primary} />
             </Pressable>
             <Pressable
-              onPress={() => onDelete(mesa.id)}
+              onPress={() => onDelete(mesa)}
               disabled={saving}
               style={[styles.actionBtn, { borderRadius: shape.full }]}
               android_ripple={{
@@ -285,6 +286,7 @@ export default function MesasScreen() {
   const [modalVisible, setModalVisible] = useState(false);
   const [qrMesa, setQrMesa] = useState<Mesa | null>(null);
   const [editando, setEditando] = useState<Mesa | null>(null);
+  const [mesaToDelete, setMesaToDelete] = useState<Mesa | null>(null);
   const [numero, setNumero] = useState("");
   const [capacidad, setCapacidad] = useState("");
   const [initialLoading, setInitialLoading] = useState(true);
@@ -324,8 +326,9 @@ export default function MesasScreen() {
 
     const { data, error: tablesError } = await supabase
       .from("tables")
-      .select("id, restaurant_id, numero, capacidad, activa")
+      .select("id, restaurant_id, numero, capacidad, activa, deprecated")
       .eq("restaurant_id", restaurant.id)
+      .eq("deprecated", false)
       .order("numero", { ascending: true });
 
     if (tablesError) setError(tablesError.message);
@@ -359,6 +362,11 @@ export default function MesasScreen() {
           }
 
           const newRow = payload.new as TableRow;
+          if (newRow.deprecated) {
+            setMesas((prev) => prev.filter((mesa) => mesa.id !== newRow.id));
+            return;
+          }
+
           setMesas((prev) => upsertMesa(prev, toMesa(newRow)));
         },
       )
@@ -408,7 +416,7 @@ export default function MesasScreen() {
         .from("tables")
         .update({ numero: numeroMesa, capacidad: capacidadMesa })
         .eq("id", editando.id)
-        .select("id, restaurant_id, numero, capacidad, activa")
+        .select("id, restaurant_id, numero, capacidad, activa, deprecated")
         .single();
 
       if (updateError) setError(updateError.message);
@@ -424,8 +432,9 @@ export default function MesasScreen() {
           numero: numeroMesa,
           capacidad: capacidadMesa,
           activa: true,
+          deprecated: false,
         })
-        .select("id, restaurant_id, numero, capacidad, activa")
+        .select("id, restaurant_id, numero, capacidad, activa, deprecated")
         .single();
 
       if (insertError) {
@@ -444,21 +453,24 @@ export default function MesasScreen() {
     if (saved) setModalVisible(false);
   };
 
-  const eliminar = async (id: string) => {
-    setSavingId(id);
+  const eliminar = async () => {
+    if (!mesaToDelete) return;
+
+    setSavingId(mesaToDelete.id);
     setError("");
     const previous = mesas;
-    setMesas((prev) => prev.filter((m) => m.id !== id));
+    setMesas((prev) => prev.filter((m) => m.id !== mesaToDelete.id));
 
-    const { error: deleteError } = await supabase
+    const { error: updateError } = await supabase
       .from("tables")
-      .delete()
-      .eq("id", id);
-    if (deleteError) {
+      .update({ deprecated: true, activa: false })
+      .eq("id", mesaToDelete.id);
+    if (updateError) {
       setMesas(previous);
-      setError(deleteError.message);
+      setError(updateError.message);
     }
 
+    setMesaToDelete(null);
     setSavingId(null);
   };
 
@@ -577,7 +589,7 @@ export default function MesasScreen() {
                 styles={s}
                 onEdit={abrirEditar}
                 onToggle={toggleActiva}
-                onDelete={eliminar}
+                onDelete={setMesaToDelete}
                 onOpenQr={setQrMesa}
               />
             ))}
@@ -683,6 +695,42 @@ export default function MesasScreen() {
         </View>
       </Modal>
 
+      <Modal visible={!!mesaToDelete} transparent animationType="fade" onRequestClose={() => setMesaToDelete(null)}>
+        <View style={s.centeredOverlay}>
+          <View
+            style={[
+              s.confirmModalCard,
+              {
+                backgroundColor: colors.surfaceContainerHigh,
+                borderRadius: shape.large,
+              },
+            ]}
+          >
+            <Text style={[typography.titleMedium, { color: colors.onSurface }]}>Eliminar mesa</Text>
+            <Text style={[typography.bodySmall, { color: colors.onSurfaceVariant }]}>
+              {mesaToDelete
+                ? `La mesa ${mesaToDelete.numero} desaparecerá del listado, pero se conservará en la base de datos por su historial de pedidos.`
+                : 'La mesa desaparecerá del listado, pero se conservará en la base de datos.'}
+            </Text>
+            <View style={s.modalActions}>
+              <Button
+                label="Cancelar"
+                variant="text"
+                onPress={() => setMesaToDelete(null)}
+                style={{ flex: 1 }}
+              />
+              <Button
+                label={savingId === mesaToDelete?.id ? "Eliminando..." : "Eliminar"}
+                variant="filled"
+                onPress={eliminar}
+                disabled={savingId === mesaToDelete?.id}
+                style={{ flex: 1 }}
+              />
+            </View>
+          </View>
+        </View>
+      </Modal>
+
       <Modal visible={!!qrMesa} transparent animationType="slide" onRequestClose={() => setQrMesa(null)}>
         <View style={s.modalOverlay}>
           <View
@@ -712,7 +760,7 @@ export default function MesasScreen() {
             {currentTableUrl ? (
               <QrPreviewCard
                 title={`Mesa ${qrMesa?.numero ?? ''}`}
-                subtitle="Este QR inicia la sesión anónima del cliente en esa mesa."
+                subtitle="Este QR abre la vista pública del cliente para esa mesa."
                 targetUrl={currentTableUrl}
                 downloadName={`mesa-${qrMesa?.numero ?? 'qr'}.png`}
               />
@@ -787,6 +835,7 @@ const makeStyles = (colors: any, shape: any) =>
     capRow: { flexDirection: "row", alignItems: "center", gap: 5 },
     actions: {
       flexDirection: "row",
+      alignItems: "center",
       borderTopWidth: StyleSheet.hairlineWidth,
       paddingHorizontal: 8,
       paddingVertical: 7,
@@ -795,9 +844,17 @@ const makeStyles = (colors: any, shape: any) =>
       flex: 1,
       alignItems: "center",
       justifyContent: "center",
-      minHeight: 34,
+      height: 36,
     },
-    toggleActionBtn: { transform: [{ translateY: -1 }] },
+    toggleActionBtn: {},
+
+    centeredOverlay: {
+      flex: 1,
+      backgroundColor: "#00000055",
+      justifyContent: "center",
+      paddingHorizontal: 20,
+    },
+    confirmModalCard: { padding: 20, gap: 12 },
 
     modalOverlay: {
       flex: 1,

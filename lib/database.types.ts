@@ -79,6 +79,7 @@ export interface Database {
           numero: number;
           capacidad: number;
           activa: boolean;
+          deprecated: boolean;
           last_cleared_at: string | null;
           created_at: string;
         };
@@ -88,6 +89,7 @@ export interface Database {
           numero: number;
           capacidad?: number;
           activa?: boolean;
+          deprecated?: boolean;
           last_cleared_at?: string | null;
           created_at?: string;
         };
@@ -97,6 +99,7 @@ export interface Database {
           numero?: number;
           capacidad?: number;
           activa?: boolean;
+          deprecated?: boolean;
           last_cleared_at?: string | null;
           created_at?: string;
         };

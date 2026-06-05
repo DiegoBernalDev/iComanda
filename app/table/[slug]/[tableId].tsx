@@ -73,6 +73,7 @@ export default function TableSessionPage() {
         .select('id, numero')
         .eq('id', tableId)
         .eq('restaurant_id', restaurant.id)
+        .eq('deprecated', false)
         .maybeSingle();
 
       if (tableError || !table) {
