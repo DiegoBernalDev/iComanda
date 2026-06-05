@@ -317,7 +317,7 @@ export default function AdminHome() {
             {
               icon: "qr-code-outline" as const,
               label: "Pagos QR",
-              desc: "Pendientes y confirmación",
+              desc: "Solo pagos pendientes",
               bg: colors.primaryContainer,
               on: colors.onPrimaryContainer,
               route: "/(admin)/pagos-qr",
@@ -548,7 +548,11 @@ const makeStyles = (colors: any, shape: any) =>
       marginBottom: 24,
     },
     moduleCardWrap: { width: "47.5%" },
-    moduleCard: { minHeight: 136, padding: 16 },
+    moduleCard: {
+      height: 148,
+      padding: 16,
+      justifyContent: "space-between",
+    },
     moduleIconBox: {
       width: 44,
       height: 44,
