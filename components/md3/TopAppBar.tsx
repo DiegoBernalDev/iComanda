@@ -1,7 +1,6 @@
 import { View, Text, Pressable, StyleSheet } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { useMD3Theme } from '@/hooks/use-md3-theme';
-import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 interface TopAppBarProps {
   title:         string;
@@ -13,7 +12,6 @@ interface TopAppBarProps {
 
 export function TopAppBar({ title, onBack, trailing, variant = 'small', subtitle }: TopAppBarProps) {
   const { colors, typography } = useMD3Theme();
-  const insets = useSafeAreaInsets();
 
   const titleStyle = {
     small:  typography.titleLarge,
@@ -24,7 +22,7 @@ export function TopAppBar({ title, onBack, trailing, variant = 'small', subtitle
   return (
     <View style={[
       styles.container,
-      { backgroundColor: colors.surface, paddingTop: insets.top },
+      { backgroundColor: colors.surface },
     ]}>
       <View style={[styles.row, variant !== 'small' && styles.rowTall]}>
         {onBack ? (
