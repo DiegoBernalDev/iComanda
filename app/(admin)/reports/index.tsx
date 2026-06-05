@@ -27,6 +27,13 @@ type WaiterSalesRow = {
   total_sales: number;
 };
 
+type TopItemRow = {
+  menu_item_id: string | null;
+  name: string;
+  total_qty: number;
+  total_revenue: number;
+};
+
 type MetodoPago = 'efectivo' | 'qr' | 'tarjeta';
 
 const PAYMENT_META: Record<MetodoPago, { label: string; icon: keyof typeof Ionicons.glyphMap }> = {
@@ -41,6 +48,7 @@ export default function AdminReportsScreen() {
   const { colors, typography, shape } = useMD3Theme();
   const s = useMemo(() => makeStyles(colors, shape), [colors, shape]);
   const { profile } = useAuth();
+  const [mode, setMode] = useState<'overview' | 'top-items'>('overview');
   const [preset, setPreset] = useState<ReportPreset>('today');
   const [fromDate, setFromDate] = useState(getRangeForPreset('today').from);
   const [toDate, setToDate] = useState(getRangeForPreset('today').to);
@@ -50,6 +58,7 @@ export default function AdminReportsScreen() {
   const [report, setReport] = useState<FinancialReport | null>(null);
   const [waiterSales, setWaiterSales] = useState<WaiterSalesRow[]>([]);
   const [paymentMethodSales, setPaymentMethodSales] = useState<PaymentMethodSalesRow[]>([]);
+  const [topItems, setTopItems] = useState<TopItemRow[]>([]);
 
   const applyPreset = (nextPreset: ReportPreset) => {
     setPreset(nextPreset);
@@ -90,6 +99,7 @@ export default function AdminReportsScreen() {
 
     const grossIncome = (orders ?? []).reduce((sum, order) => sum + Number(order.total ?? 0), 0);
     const totalExpenses = (expenses ?? []).reduce((sum, expense) => sum + Number(expense.monto ?? 0), 0);
+    const orderIds = (orders ?? []).map((order) => order.id);
     const profileMap = new Map((profiles ?? []).map((item) => [item.id, item.nombre]));
     const waiterMap = new Map();
     const paymentMap = new Map<PaymentMethodSalesRow['method'], PaymentMethodSalesRow>();
@@ -119,6 +129,41 @@ export default function AdminReportsScreen() {
       paymentCurrent.orders_count += 1;
       paymentCurrent.total_sales += Number(order.total ?? 0);
       paymentMap.set(method, paymentCurrent);
+    }
+
+    if (orderIds.length > 0) {
+      const { data: orderItems, error: orderItemsError } = await supabase
+        .from('order_items')
+        .select('menu_item_id, nombre, precio_unitario, cantidad')
+        .in('order_id', orderIds);
+
+      if (orderItemsError) {
+        setError(orderItemsError.message);
+        setLoading(false);
+        return;
+      }
+
+      const itemMap = new Map<string, TopItemRow>();
+      for (const item of orderItems ?? []) {
+        const key = item.menu_item_id ?? item.nombre;
+        const current = itemMap.get(key) ?? {
+          menu_item_id: item.menu_item_id,
+          name: item.nombre,
+          total_qty: 0,
+          total_revenue: 0,
+        };
+        current.total_qty += Number(item.cantidad ?? 0);
+        current.total_revenue += Number(item.precio_unitario ?? 0) * Number(item.cantidad ?? 0);
+        itemMap.set(key, current);
+      }
+
+      setTopItems(
+        [...itemMap.values()]
+          .sort((a, b) => b.total_qty - a.total_qty || b.total_revenue - a.total_revenue)
+          .slice(0, 10),
+      );
+    } else {
+      setTopItems([]);
     }
 
     setReport({
@@ -171,7 +216,18 @@ export default function AdminReportsScreen() {
             <Chip label="Hoy" variant="filter" selected={preset === 'today'} onPress={() => applyPreset('today')} />
             <Chip label="Semana" variant="filter" selected={preset === 'week'} onPress={() => applyPreset('week')} />
             <Chip label="Mes" variant="filter" selected={preset === 'month'} onPress={() => applyPreset('month')} />
-            <Chip label="Personalizado" variant="filter" selected={preset === 'custom'} onPress={() => applyPreset('custom')} />
+            <Chip label="Todo" variant="filter" selected={preset === 'custom'} onPress={() => applyPreset('custom')} />
+          </View>
+        </Enter>
+
+        <Enter delay={20}>
+          <View style={s.modeRow}>
+            <View style={s.modeChip}>
+              <Chip label="Resumen" variant="filter" selected={mode === 'overview'} onPress={() => setMode('overview')} icon="analytics-outline" />
+            </View>
+            <View style={s.modeChip}>
+              <Chip label="Top platos" variant="filter" selected={mode === 'top-items'} onPress={() => setMode('top-items')} icon="bar-chart-outline" />
+            </View>
           </View>
         </Enter>
 
@@ -191,19 +247,27 @@ export default function AdminReportsScreen() {
           </View>
         ) : (
           <>
+            {mode === 'overview' ? (
+              <>
             <Enter delay={80}>
               <View style={s.metricsGrid}>
-                {[
-                  { label: 'Ingreso bruto', value: formatMoney(report.gross_income), icon: 'cash-outline', tone: colors.primaryContainer, on: colors.onPrimaryContainer },
-                  { label: 'Egresos', value: formatMoney(report.total_expenses), icon: 'receipt-outline', tone: colors.secondaryContainer, on: colors.onSecondaryContainer },
-                  { label: 'Neto', value: formatMoney(report.net_income), icon: 'trending-up-outline', tone: colors.tertiaryContainer, on: colors.onTertiaryContainer },
-                ].map((item) => (
-                  <Card key={item.label} variant="outlined" style={[s.metricCard, { backgroundColor: item.tone, borderRadius: shape.large }]}> 
-                    <Ionicons name={item.icon as any} size={18} color={item.on} />
-                    <Text style={[typography.labelMedium, { color: item.on + 'CC' }]}>{item.label}</Text>
-                    <Text style={[typography.titleLarge, { color: item.on }]}>{item.value}</Text>
-                  </Card>
-                ))}
+                <View style={s.metricsRow}>
+                  {[
+                    { label: 'Ingreso bruto', value: formatMoney(report.gross_income), icon: 'cash-outline', tone: colors.primaryContainer, on: colors.onPrimaryContainer },
+                    { label: 'Egresos', value: formatMoney(report.total_expenses), icon: 'receipt-outline', tone: colors.secondaryContainer, on: colors.onSecondaryContainer },
+                  ].map((item) => (
+                    <Card key={item.label} variant="outlined" style={[s.metricCard, s.metricCardHalf, { backgroundColor: item.tone, borderRadius: shape.large }]}>
+                      <Ionicons name={item.icon as any} size={18} color={item.on} />
+                      <Text style={[typography.labelMedium, { color: item.on + 'CC' }]}>{item.label}</Text>
+                      <Text style={[typography.titleMedium, { color: item.on }]}>{item.value}</Text>
+                    </Card>
+                  ))}
+                </View>
+                <Card variant="outlined" style={[s.metricCard, { backgroundColor: colors.tertiaryContainer, borderRadius: shape.large }]}>
+                  <Ionicons name="trending-up-outline" size={18} color={colors.onTertiaryContainer} />
+                  <Text style={[typography.labelMedium, { color: colors.onTertiaryContainer + 'CC' }]}>Neto</Text>
+                  <Text style={[typography.titleMedium, { color: colors.onTertiaryContainer }]}>{formatMoney(report.net_income)}</Text>
+                </Card>
               </View>
             </Enter>
 
@@ -230,7 +294,7 @@ export default function AdminReportsScreen() {
               })}
             </View>
 
-            <Enter delay={180}>
+            <Enter delay={220}>
               <View style={s.sectionHeader}>
                 <Text style={[typography.titleMedium, { color: colors.onSurface }]}>Ventas por mesero</Text>
                 <View style={s.headerActions}>
@@ -247,7 +311,6 @@ export default function AdminReportsScreen() {
                     }}
                     disabled={Platform.OS !== 'web'}
                   />
-                  <Button label="Top platos" variant="tonal" icon="bar-chart-outline" onPress={() => router.push('/(admin)/reports/top-items' as any)} />
                 </View>
               </View>
               {Platform.OS !== 'web' ? (
@@ -261,7 +324,7 @@ export default function AdminReportsScreen() {
               </Card>
             ) : (
               waiterSales.map((row, index) => (
-                <Enter key={row.mesero_id} delay={220 + index * 30}>
+                <Enter key={row.mesero_id} delay={260 + index * 30}>
                   <Card variant="outlined" style={s.waiterCard}>
                     <View style={s.waiterRow}>
                       <View style={{ flex: 1 }}>
@@ -269,6 +332,29 @@ export default function AdminReportsScreen() {
                         <Text style={[typography.bodySmall, { color: colors.onSurfaceVariant }]}>{row.orders_count} pedido(s) pagados</Text>
                       </View>
                       <Text style={[typography.titleMedium, { color: colors.primary }]}>{formatMoney(row.total_sales)}</Text>
+                    </View>
+                  </Card>
+                </Enter>
+              ))
+            )}
+              </>
+            ) : topItems.length === 0 ? (
+              <Card variant="outlined" style={s.emptyCard}>
+                <Text style={[typography.bodyMedium, { color: colors.onSurfaceVariant }]}>No hay platos vendidos en el periodo seleccionado.</Text>
+              </Card>
+            ) : (
+              topItems.map((item, index) => (
+                <Enter key={`${item.menu_item_id ?? item.name}-${index}`} delay={120 + index * 24}>
+                  <Card variant="outlined" style={s.itemCard}>
+                    <View style={s.itemRow}>
+                      <View style={s.rankBadge}>
+                        <Text style={[typography.labelLarge, { color: colors.primary }]}>#{index + 1}</Text>
+                      </View>
+                      <View style={{ flex: 1 }}>
+                        <Text style={[typography.titleSmall, { color: colors.onSurface }]}>{item.name}</Text>
+                        <Text style={[typography.bodySmall, { color: colors.onSurfaceVariant }]}>{item.total_qty} unidad(es)</Text>
+                      </View>
+                      <Text style={[typography.titleMedium, { color: colors.primary }]}>{formatMoney(item.total_revenue)}</Text>
                     </View>
                   </Card>
                 </Enter>
@@ -285,11 +371,15 @@ const makeStyles = (colors: any, shape: any) => StyleSheet.create({
   safe: { flex: 1 },
   scroll: { padding: 16, paddingBottom: 40, gap: 10 },
   chipsRow: { flexDirection: 'row', gap: 8, flexWrap: 'wrap', marginBottom: 8 },
+  modeRow: { flexDirection: 'row', gap: 10, marginBottom: 8 },
+  modeChip: { flex: 1, justifyContent: 'center' },
   filterCard: { padding: 14 },
   errorBanner: { flexDirection: 'row', alignItems: 'center', gap: 6, padding: 10, marginBottom: 12 },
   loadingBox: { paddingVertical: 32 },
   metricsGrid: { gap: 8 },
+  metricsRow: { flexDirection: 'row', gap: 8 },
   metricCard: { padding: 16, gap: 8, borderWidth: 1 },
+  metricCardHalf: { flex: 1 },
   paymentGrid: { flexDirection: 'row', flexWrap: 'wrap', gap: 8, marginTop: 8, marginBottom: 8 },
   paymentCardWrap: { width: '48%' },
   paymentCard: { padding: 14, gap: 6, minHeight: 116 },
@@ -299,4 +389,7 @@ const makeStyles = (colors: any, shape: any) => StyleSheet.create({
   emptyCard: { padding: 16, marginTop: 6 },
   waiterCard: { padding: 14, marginTop: 8 },
   waiterRow: { flexDirection: 'row', alignItems: 'center', gap: 10 },
+  itemCard: { padding: 14, marginTop: 8 },
+  itemRow: { flexDirection: 'row', alignItems: 'center', gap: 10 },
+  rankBadge: { width: 42, alignItems: 'center', justifyContent: 'center' },
 });

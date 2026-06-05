@@ -136,7 +136,7 @@ export default function AdminTopItemsScreen() {
             <Chip label="Hoy" variant="filter" selected={preset === 'today'} onPress={() => applyPreset('today')} />
             <Chip label="Semana" variant="filter" selected={preset === 'week'} onPress={() => applyPreset('week')} />
             <Chip label="Mes" variant="filter" selected={preset === 'month'} onPress={() => applyPreset('month')} />
-            <Chip label="Personalizado" variant="filter" selected={preset === 'custom'} onPress={() => applyPreset('custom')} />
+            <Chip label="Todo" variant="filter" selected={preset === 'custom'} onPress={() => applyPreset('custom')} />
           </View>
         </Enter>
 
