@@ -11,6 +11,7 @@ import {
 import { Role, Usuario } from "@/constants/mock";
 import { useAuth } from "@/context/auth";
 import { useMD3Theme } from "@/hooks/use-md3-theme";
+import { sanitizeTextOnlyInput } from '@/lib/form-sanitizers';
 import { supabase } from "@/lib/supabase";
 import { Ionicons } from "@expo/vector-icons";
 import { router } from "expo-router";
@@ -137,7 +138,8 @@ export default function UsuariosScreen() {
   };
 
   const crearUsuario = async () => {
-    if (!nombre || !email || !password) {
+    const trimmedName = sanitizeTextOnlyInput(nombre).trim();
+    if (!trimmedName || !email || !password) {
       setError("Completá todos los campos.");
       return;
     }
@@ -149,7 +151,7 @@ export default function UsuariosScreen() {
       "crear-usuario",
       {
         body: {
-          nombre: nombre.trim(),
+          nombre: trimmedName,
           email: normalizedEmail,
           password,
           rol,
@@ -438,7 +440,7 @@ export default function UsuariosScreen() {
               label="Nombre completo"
               variant="outlined"
               value={nombre}
-              onChangeText={setNombre}
+              onChangeText={(value) => setNombre(sanitizeTextOnlyInput(value))}
               leadingIcon="person-outline"
               containerColor={colors.surfaceContainerHigh}
             />

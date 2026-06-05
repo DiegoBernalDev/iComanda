@@ -3,6 +3,7 @@ import { DatePickerField } from '@/components/md3/date-picker-field';
 import { useAuth } from '@/context/auth';
 import { useMD3Theme } from '@/hooks/use-md3-theme';
 import { getAdminRestaurant } from '@/lib/admin';
+import { sanitizeDecimalInput, sanitizeTextOnlyInput } from '@/lib/form-sanitizers';
 import { supabase } from '@/lib/supabase';
 import { Ionicons } from '@expo/vector-icons';
 import { router } from 'expo-router';
@@ -149,16 +150,16 @@ export default function AdminGastosScreen() {
 
   const openEditModal = (expense: Expense) => {
     setEditingExpense(expense);
-    setDescripcion(expense.descripcion);
-    setMonto(String(expense.monto));
+    setDescripcion(sanitizeTextOnlyInput(expense.descripcion));
+    setMonto(sanitizeDecimalInput(String(expense.monto)));
     setFecha(expense.fecha);
     setFormError('');
     setFormVisible(true);
   };
 
   const saveExpense = async () => {
-    const trimmedDescription = descripcion.trim();
-    const parsedAmount = Number(monto);
+    const trimmedDescription = sanitizeTextOnlyInput(descripcion).trim();
+    const parsedAmount = Number(sanitizeDecimalInput(monto));
 
     // Validar descripción
     if (!trimmedDescription) {
@@ -382,8 +383,8 @@ export default function AdminGastosScreen() {
                 <Text style={[typography.bodySmall, { color: colors.onErrorContainer, flex: 1 }]}>{formError}</Text>
               </View>
             ) : null}
-            <TextField label="Descripción" value={descripcion} onChangeText={setDescripcion} />
-            <TextField label="Monto" value={monto} onChangeText={setMonto} keyboardType="decimal-pad" />
+            <TextField label="Descripción" value={descripcion} onChangeText={(value) => setDescripcion(sanitizeTextOnlyInput(value))} />
+            <TextField label="Monto" value={monto} onChangeText={(value) => setMonto(sanitizeDecimalInput(value))} keyboardType="decimal-pad" />
             
             {/* Date picker para fecha */}
             <DatePickerField

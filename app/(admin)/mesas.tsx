@@ -11,6 +11,7 @@ import { Mesa } from "@/constants/mock";
 import { useAuth } from "@/context/auth";
 import { useMD3Theme } from "@/hooks/use-md3-theme";
 import { getAdminRestaurant } from "@/lib/admin";
+import { sanitizeIntegerInput } from '@/lib/form-sanitizers';
 import { supabase } from "@/lib/supabase";
 import { Ionicons } from "@expo/vector-icons";
 import { router } from "expo-router";
@@ -300,8 +301,8 @@ export default function MesasScreen() {
   };
   const abrirEditar = (m: Mesa) => {
     setEditando(m);
-    setNumero(String(m.numero));
-    setCapacidad(String(m.capacidad));
+    setNumero(sanitizeIntegerInput(String(m.numero)));
+    setCapacidad(sanitizeIntegerInput(String(m.capacidad)));
     setError("");
     setModalVisible(true);
   };
@@ -617,7 +618,7 @@ export default function MesasScreen() {
               label="Número de mesa"
               variant="outlined"
               value={numero}
-              onChangeText={setNumero}
+              onChangeText={(value) => setNumero(sanitizeIntegerInput(value))}
               leadingIcon="grid-outline"
               keyboardType="numeric"
               containerColor={colors.surfaceContainerHigh}
@@ -627,7 +628,7 @@ export default function MesasScreen() {
                 label="Capacidad (personas)"
                 variant="outlined"
                 value={capacidad}
-                onChangeText={setCapacidad}
+                onChangeText={(value) => setCapacidad(sanitizeIntegerInput(value))}
                 leadingIcon="people-outline"
                 keyboardType="numeric"
                 containerColor={colors.surfaceContainerHigh}

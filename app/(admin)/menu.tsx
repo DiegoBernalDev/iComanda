@@ -2,6 +2,7 @@ import { Button, Card, Chip, Enter, TextField, TopAppBar } from '@/components/md
 import { useAuth } from '@/context/auth';
 import { useMD3Theme } from '@/hooks/use-md3-theme';
 import { getAdminRestaurant } from '@/lib/admin';
+import { sanitizeDecimalInput, sanitizeTextOnlyInput } from '@/lib/form-sanitizers';
 import { supabase } from '@/lib/supabase';
 import { Ionicons } from '@expo/vector-icons';
 import { Image } from 'expo-image';
@@ -125,10 +126,10 @@ export default function AdminMenuScreen() {
   const openEdit = (item: MenuItem) => {
     setForm({
       id: item.id,
-      nombre: item.nombre,
-      descripcion: item.descripcion ?? '',
-      precio: String(item.precio),
-      categoria: item.categoria ?? '',
+      nombre: sanitizeTextOnlyInput(item.nombre),
+      descripcion: sanitizeTextOnlyInput(item.descripcion ?? ''),
+      precio: sanitizeDecimalInput(String(item.precio)),
+      categoria: sanitizeTextOnlyInput(item.categoria ?? ''),
       imagen_url: item.imagen_url ?? '',
     });
     setError('');
@@ -180,8 +181,11 @@ export default function AdminMenuScreen() {
       return;
     }
 
-    const price = Number(form.precio.replace(',', '.'));
-    if (!form.nombre.trim() || !Number.isFinite(price) || price < 0) {
+    const trimmedName = sanitizeTextOnlyInput(form.nombre).trim();
+    const trimmedDescription = sanitizeTextOnlyInput(form.descripcion).trim();
+    const trimmedCategory = sanitizeTextOnlyInput(form.categoria).trim();
+    const price = Number(sanitizeDecimalInput(form.precio));
+    if (!trimmedName || !Number.isFinite(price) || price < 0) {
       setError('Nombre y precio válido son obligatorios.');
       return;
     }
@@ -190,10 +194,10 @@ export default function AdminMenuScreen() {
     setError('');
 
     const payload = {
-      nombre: form.nombre.trim(),
-      descripcion: form.descripcion.trim() || null,
+      nombre: trimmedName,
+      descripcion: trimmedDescription || null,
       precio: price,
-      categoria: form.categoria.trim() || null,
+      categoria: trimmedCategory || null,
       imagen_url: form.imagen_url.trim() || null,
     };
 
@@ -462,7 +466,7 @@ export default function AdminMenuScreen() {
               label="Nombre"
               variant="outlined"
               value={form.nombre}
-              onChangeText={(value) => setForm((prev) => ({ ...prev, nombre: value }))}
+              onChangeText={(value) => setForm((prev) => ({ ...prev, nombre: sanitizeTextOnlyInput(value) }))}
               leadingIcon="restaurant-outline"
               containerColor={colors.surfaceContainerHigh}
             />
@@ -471,7 +475,7 @@ export default function AdminMenuScreen() {
                 label="Precio (Bs)"
                 variant="outlined"
                 value={form.precio}
-                onChangeText={(value) => setForm((prev) => ({ ...prev, precio: value }))}
+                onChangeText={(value) => setForm((prev) => ({ ...prev, precio: sanitizeDecimalInput(value) }))}
                 leadingIcon="cash-outline"
                 keyboardType="decimal-pad"
                 containerColor={colors.surfaceContainerHigh}
@@ -626,7 +630,7 @@ export default function AdminMenuScreen() {
                     label="Nombre de la categoría"
                     variant="outlined"
                     value={newCategory}
-                    onChangeText={setNewCategory}
+                    onChangeText={(value) => setNewCategory(sanitizeTextOnlyInput(value))}
                     containerColor={colors.surfaceContainerHigh}
                   />
 
@@ -662,7 +666,7 @@ export default function AdminMenuScreen() {
                 label="Descripción"
                 variant="outlined"
                 value={form.descripcion}
-                onChangeText={(value) => setForm((prev) => ({ ...prev, descripcion: value }))}
+                onChangeText={(value) => setForm((prev) => ({ ...prev, descripcion: sanitizeTextOnlyInput(value) }))}
                 leadingIcon="document-text-outline"
                 multiline
                 containerColor={colors.surfaceContainerHigh}

@@ -2,6 +2,7 @@ import { Button, Card, Chip, Enter, TextField, TopAppBar } from '@/components/md
 import { useAuth } from '@/context/auth';
 import { useMD3Theme } from '@/hooks/use-md3-theme';
 import { getAdminRestaurant } from '@/lib/admin';
+import { sanitizeIntegerInput, sanitizeTextOnlyInput } from '@/lib/form-sanitizers';
 import { supabase } from '@/lib/supabase';
 import { Ionicons } from '@expo/vector-icons';
 import { router } from 'expo-router';
@@ -150,9 +151,9 @@ export default function AdminInventarioScreen() {
 
   const openMaterialModal = (material?: MaterialRow) => {
     setEditingMaterial(material ?? null);
-    setMaterialName(material?.nombre ?? '');
-    setMaterialUnit(material?.unidad ?? 'unidad');
-    setMinimumStock(`${material?.stock_minimo ?? 0}`);
+    setMaterialName(sanitizeTextOnlyInput(material?.nombre ?? ''));
+    setMaterialUnit(sanitizeTextOnlyInput(material?.unidad ?? 'unidad'));
+    setMinimumStock(sanitizeIntegerInput(`${material?.stock_minimo ?? 0}`));
     setMaterialModalVisible(true);
   };
 
@@ -160,14 +161,14 @@ export default function AdminInventarioScreen() {
     setSelectedMaterial(material);
     setMovementType(type);
     setMovementQuantity('1');
-    setMovementReason(MOVEMENT_REASONS[type][0]);
+    setMovementReason(sanitizeTextOnlyInput(MOVEMENT_REASONS[type][0]));
     setMovementNotes('');
     setMovementModalVisible(true);
   };
 
   const saveMaterial = async () => {
-    const trimmedName = materialName.trim();
-    const trimmedUnit = materialUnit.trim() || 'unidad';
+    const trimmedName = sanitizeTextOnlyInput(materialName).trim();
+    const trimmedUnit = sanitizeTextOnlyInput(materialUnit).trim() || 'unidad';
     const parsedMinimum = Number(minimumStock);
 
     if (!restaurantId) {
@@ -239,6 +240,7 @@ export default function AdminInventarioScreen() {
 
   const registerMovement = async () => {
     const parsedQuantity = Number(movementQuantity);
+    const trimmedReason = sanitizeTextOnlyInput(movementReason).trim();
 
     if (!selectedMaterial || !restaurantId) {
       setError('Selecciona un material válido.');
@@ -258,7 +260,7 @@ export default function AdminInventarioScreen() {
       restaurant_id: restaurantId,
       movement_type: movementType,
       quantity: parsedQuantity,
-      reason: movementReason.trim() || null,
+      reason: trimmedReason || null,
       notes: movementNotes.trim() || null,
       created_by: profile?.id ?? null,
     });
@@ -382,12 +384,12 @@ export default function AdminInventarioScreen() {
           <View style={[s.modalCard, { backgroundColor: colors.surfaceContainerHigh, borderTopLeftRadius: shape.extraLarge, borderTopRightRadius: shape.extraLarge }]}> 
             <View style={[s.handle, { backgroundColor: colors.onSurfaceVariant + '40' }]} />
             <Text style={[typography.titleLarge, { color: colors.onSurface, marginBottom: 20 }]}>{editingMaterial ? 'Editar material' : 'Nuevo material'}</Text>
-            <TextField label="Nombre" variant="outlined" value={materialName} onChangeText={setMaterialName} leadingIcon="cube-outline" containerColor={colors.surfaceContainerHigh} />
+            <TextField label="Nombre" variant="outlined" value={materialName} onChangeText={(value) => setMaterialName(sanitizeTextOnlyInput(value))} leadingIcon="cube-outline" containerColor={colors.surfaceContainerHigh} />
             <View style={{ marginTop: 14 }}>
-              <TextField label="Unidad" variant="outlined" value={materialUnit} onChangeText={setMaterialUnit} leadingIcon="layers-outline" containerColor={colors.surfaceContainerHigh} />
+              <TextField label="Unidad" variant="outlined" value={materialUnit} onChangeText={(value) => setMaterialUnit(sanitizeTextOnlyInput(value))} leadingIcon="layers-outline" containerColor={colors.surfaceContainerHigh} />
             </View>
             <View style={{ marginTop: 14 }}>
-              <TextField label="Stock mínimo" variant="outlined" value={minimumStock} onChangeText={setMinimumStock} leadingIcon="alert-outline" keyboardType="numeric" containerColor={colors.surfaceContainerHigh} />
+              <TextField label="Stock mínimo" variant="outlined" value={minimumStock} onChangeText={(value) => setMinimumStock(sanitizeIntegerInput(value))} leadingIcon="alert-outline" keyboardType="numeric" containerColor={colors.surfaceContainerHigh} />
             </View>
             {editingMaterial ? (
               <Button label="Desactivar material" variant="outlined" icon="archive-outline" onPress={deactivateMaterial} disabled={saving} style={{ marginTop: 16 }} />
@@ -415,9 +417,9 @@ export default function AdminInventarioScreen() {
                 <Chip key={reason} label={reason} variant="filter" selected={movementReason === reason} onPress={() => setMovementReason(reason)} />
               ))}
             </View>
-            <TextField label="Cantidad" variant="outlined" value={movementQuantity} onChangeText={setMovementQuantity} leadingIcon={movementType === 'reposicion' ? 'add-outline' : 'remove-outline'} keyboardType="numeric" containerColor={colors.surfaceContainerHigh} />
+            <TextField label="Cantidad" variant="outlined" value={movementQuantity} onChangeText={(value) => setMovementQuantity(sanitizeIntegerInput(value))} leadingIcon={movementType === 'reposicion' ? 'add-outline' : 'remove-outline'} keyboardType="numeric" containerColor={colors.surfaceContainerHigh} />
             <View style={{ marginTop: 14 }}>
-              <TextField label="Motivo" variant="outlined" value={movementReason} onChangeText={setMovementReason} leadingIcon="document-text-outline" containerColor={colors.surfaceContainerHigh} />
+              <TextField label="Motivo" variant="outlined" value={movementReason} onChangeText={(value) => setMovementReason(sanitizeTextOnlyInput(value))} leadingIcon="document-text-outline" containerColor={colors.surfaceContainerHigh} />
             </View>
             <View style={{ marginTop: 14 }}>
               <TextField label="Notas" variant="outlined" value={movementNotes} onChangeText={setMovementNotes} leadingIcon="create-outline" containerColor={colors.surfaceContainerHigh} multiline />

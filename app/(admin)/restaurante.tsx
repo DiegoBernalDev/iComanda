@@ -10,6 +10,7 @@ import { TopAppBar, Card, TextField, Button, Surface, Pop, PressScale, Enter } f
 import { QrPreviewCard } from '@/components/admin/QrPreviewCard';
 import { Restaurante } from '@/constants/mock';
 import { useAuth } from '@/context/auth';
+import { sanitizePhoneInput, sanitizeSlugInput, sanitizeTextOnlyInput } from '@/lib/form-sanitizers';
 import { getAdminRestaurant } from '@/lib/admin';
 import { getPublicMenuUrl } from '@/lib/public-links';
 import { supabase } from '@/lib/supabase';
@@ -80,7 +81,11 @@ export default function RestauranteScreen() {
 
   const iniciarEdicion = () => { setForm({ ...restaurante }); setEditando(true); setGuardado(false); };
   const guardar = async () => {
-    if (!form.nombre.trim() || !form.slug.trim()) {
+    const trimmedName = sanitizeTextOnlyInput(form.nombre).trim();
+    const normalizedSlug = sanitizeSlugInput(form.slug).trim();
+    const normalizedPhone = sanitizePhoneInput(form.telefono).trim();
+
+    if (!trimmedName || !normalizedSlug) {
       setError('El nombre y el slug son obligatorios.');
       return;
     }
@@ -89,10 +94,10 @@ export default function RestauranteScreen() {
     setError('');
 
     const payload = {
-      nombre: form.nombre.trim(),
-      slug: form.slug.trim(),
+      nombre: trimmedName,
+      slug: normalizedSlug,
       direccion: form.direccion.trim() || null,
-      telefono: form.telefono.trim() || null,
+      telefono: normalizedPhone || null,
       logo_url: form.logoUrl.trim() || null,
     };
 
@@ -255,14 +260,14 @@ export default function RestauranteScreen() {
           <Enter delay={120}>
           <View style={s.fieldsEdit}>
             <TextField label="Nombre" variant="outlined" value={form.nombre}
-              onChangeText={v => setForm(f => ({ ...f, nombre: v }))} leadingIcon="storefront-outline" containerColor={colors.background} />
+              onChangeText={v => setForm(f => ({ ...f, nombre: sanitizeTextOnlyInput(v) }))} leadingIcon="storefront-outline" containerColor={colors.background} />
             <TextField label="Slug" variant="outlined" value={form.slug}
-              onChangeText={v => setForm(f => ({ ...f, slug: v.toLowerCase().replace(/\s/g, '-') }))}
+              onChangeText={v => setForm(f => ({ ...f, slug: sanitizeSlugInput(v) }))}
               leadingIcon="link-outline" supportingText="Solo letras, números y guiones" containerColor={colors.background} />
             <TextField label="Dirección" variant="outlined" value={form.direccion}
               onChangeText={v => setForm(f => ({ ...f, direccion: v }))} leadingIcon="location-outline" containerColor={colors.background} />
             <TextField label="Teléfono" variant="outlined" value={form.telefono}
-              onChangeText={v => setForm(f => ({ ...f, telefono: v }))} leadingIcon="call-outline" keyboardType="phone-pad" containerColor={colors.background} />
+              onChangeText={v => setForm(f => ({ ...f, telefono: sanitizePhoneInput(v) }))} leadingIcon="call-outline" keyboardType="phone-pad" containerColor={colors.background} />
           </View>
           </Enter>
         ) : (
